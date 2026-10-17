@@ -466,7 +466,7 @@ export class World {
     }
     if (o.taxi) addBox(g, 0.6, 0.2, 0.3, stdMat(0xfff2b0, { emissive: 0xffe08a, ei: 1.1 }), 0, 1.58, -0.25, false)
     for (const off of [-1.45, 0, 1.45]) {
-      this.colliders.push(circleCol(x + Math.sin(rot) * off, z + Math.cos(rot) * off, 1.0))
+      this.colliders.push(circleCol(x + Math.sin(rot) * off, z + Math.cos(rot) * off, 1.0, true))
     }
   }
 
@@ -485,7 +485,7 @@ export class World {
     for (const wx of [-1.36, 1.36]) for (const wz of [-3.6, 3.6]) addBox(g, 0.35, 1.0, 1.0, stdMat(0x15171d), wx, 0.5, wz)
     addBox(g, 1.2, 0.6, 1.4, stdMat(0x8a8f99), 0, 3.4, -1.5)
     for (const off of [-4.4, -2.6, -0.8, 1, 2.8, 4.6]) {
-      this.colliders.push(circleCol(x + Math.sin(rot) * off, z + Math.cos(rot) * off, 1.45))
+      this.colliders.push(circleCol(x + Math.sin(rot) * off, z + Math.cos(rot) * off, 1.45, true))
     }
   }
 
@@ -506,7 +506,7 @@ export class World {
     for (const wx of [-1.25, 1.25]) for (const wz of [-2.4, -0.4, 2.8]) addBox(g, 0.4, 1.0, 1.0, dark, wx, 0.5, wz)
     addBox(g, 0.7, 0.14, 0.14, stdMat(0xfff2b0, { emissive: 0xffe9a0, ei: 1 }), 0, 1.2, 4.42, false)
     for (const off of [-2.6, -1.0, 0.6, 2.2, 3.6]) {
-      this.colliders.push(circleCol(x + Math.sin(rot) * off, z + Math.cos(rot) * off, 1.3))
+      this.colliders.push(circleCol(x + Math.sin(rot) * off, z + Math.cos(rot) * off, 1.3, true))
     }
   }
 
