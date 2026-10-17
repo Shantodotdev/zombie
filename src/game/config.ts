@@ -111,7 +111,7 @@ export const WEAPONS: WeaponDef[] = [
  * ------------------------------------------------------------------------- */
 export type ZombieKind =
   | 'walker' | 'runner' | 'spitter' | 'bloater' | 'brute' | 'boss'
-  | 'leaper' | 'riot' | 'screamer' | 'splitter' | 'crawler'
+  | 'leaper' | 'riot' | 'screamer' | 'splitter' | 'crawler' | 'witch' | 'skeleton'
 
 export interface ZombieDef {
   kind: ZombieKind
@@ -141,13 +141,16 @@ export const ZOMBIES: Record<ZombieKind, ZombieDef> = {
   riot:     { kind: 'riot',     label: 'Riot Guard',  blurb: 'Shield blocks frontal bullets - flank it', hp: 230, speed: 2.1, damage: 18, radius: 0.55, scale: 1.15, score: 55,   cost: 5,   minWave: 6, weight: 1.0, attackCd: 1.2, knockResist: 0.5 },
   screamer: { kind: 'screamer', label: 'Screamer',    blurb: 'Shrieks to enrage nearby zombies',       hp: 42,   speed: 2.6, damage: 6,  radius: 0.42, scale: 0.95, score: 45,   cost: 4,   minWave: 7, weight: 0.8, attackCd: 2.0, knockResist: 0 },
   splitter: { kind: 'splitter', label: 'Splitter',    blurb: 'Bursts into crawlers when killed',       hp: 170,  speed: 2.1, damage: 16, radius: 0.75, scale: 1.35, score: 50,   cost: 5,   minWave: 8, weight: 0.9, attackCd: 1.1, knockResist: 0.3 },
+  witch:    { kind: 'witch',    label: 'Witch',       blurb: 'Summons endless skeletons - kill her first', hp: 170, speed: 2.4, damage: 8,  radius: 0.45, scale: 1.1,  score: 90,   cost: 8,   minWave: 7, weight: 1.0, attackCd: 2.0, knockResist: 0.2 },
+  skeleton: { kind: 'skeleton', label: 'Skeleton',    blurb: '',                                       hp: 18,   speed: 4.3, damage: 6,  radius: 0.34, scale: 0.9,  score: 3,    cost: 0,   minWave: 99, weight: 0, attackCd: 0.7, knockResist: 0 },
   boss:     { kind: 'boss',     label: 'ABOMINATION', blurb: '',                                       hp: 3400, speed: 2.5, damage: 40, radius: 1.7,  scale: 3.4,  score: 1000, cost: 0,   minWave: 5, weight: 0,   attackCd: 3.0, knockResist: 0.97 },
 }
 
 export function buildWave(n: number): ZombieKind[] {
   const list: ZombieKind[] = []
-  let budget = 6 + n * 3.2 + n * n * 0.25
-  const pool = (Object.values(ZOMBIES) as ZombieDef[]).filter((z) => z.kind !== 'boss' && z.minWave <= n)
+  // bigger every wave: ~20 hostiles at wave 1, ~40 at wave 5, ~75 at wave 10, 120+ later
+  let budget = 12 + n * 8 + n * n * 0.9
+  const pool = (Object.values(ZOMBIES) as ZombieDef[]).filter((z) => z.kind !== 'boss' && z.weight > 0 && z.minWave <= n)
   let guard = 0
   while (budget > 0.9 && guard++ < 400) {
     const total = pool.reduce((s, z) => s + z.weight, 0)
@@ -161,6 +164,12 @@ export function buildWave(n: number): ZombieKind[] {
       list.push(chosen.kind)
       budget -= chosen.cost
     } else if (guard > 60) break
+  }
+  // witches are guaranteed from wave 7 and get more frequent over time
+  if (n >= 7) {
+    const want = 1 + Math.floor((n - 7) / 4)
+    let have = list.filter((k) => k === 'witch').length
+    while (have++ < want) list.push('witch')
   }
   shuffle(list)
   if (n % 5 === 0) list.unshift('boss')

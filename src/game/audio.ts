@@ -228,7 +228,7 @@ export class AudioEngine {
     this.lastGroan = now
     const vol = Math.max(0, 1 - dist / 38)
     if (vol < 0.05) return
-    const base = { walker: 95, runner: 150, spitter: 120, bloater: 62, brute: 52, boss: 38, leaper: 175, riot: 78, screamer: 230, splitter: 66, crawler: 210 }[kind] * (0.85 + Math.random() * 0.3)
+    const base = { walker: 95, runner: 150, spitter: 120, bloater: 62, brute: 52, boss: 38, leaper: 175, riot: 78, screamer: 230, splitter: 66, crawler: 210, witch: 260, skeleton: 150 }[kind] * (0.85 + Math.random() * 0.3)
     const dur = kind === 'runner' ? 0.45 : 0.9
     const t = now
     const osc = ctx.createOscillator()
@@ -266,6 +266,17 @@ export class AudioEngine {
   shieldBreak() {
     this.noise({ dur: 0.35, type: 'highpass', f0: 2500, f1: 800, gain: 0.5 })
     this.tone({ type: 'sawtooth', f0: 300, f1: 60, dur: 0.3, gain: 0.3 })
+  }
+  summon(dist = 10) {
+    const v = Math.max(0.2, 1 - dist / 45)
+    this.tone({ type: 'sawtooth', f0: 110, f1: 220, dur: 1.1, gain: 0.22 * v, attack: 0.3 })
+    this.tone({ type: 'sine', f0: 330, f1: 660, dur: 1.1, gain: 0.16 * v, attack: 0.4, detune: 14 })
+    this.noise({ dur: 1.0, type: 'bandpass', f0: 700, f1: 2400, q: 1.4, gain: 0.18 * v, attack: 0.4 })
+  }
+  rise(dist = 10) {
+    const v = Math.max(0.15, 1 - dist / 40)
+    this.noise({ dur: 0.18, type: 'bandpass', f0: 2500, f1: 900, q: 2, gain: 0.2 * v })
+    this.tone({ type: 'square', f0: 220, f1: 90, dur: 0.1, gain: 0.08 * v })
   }
   scream(dist = 10) {
     const v = Math.max(0.15, 1 - dist / 40)

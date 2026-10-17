@@ -34,6 +34,8 @@ const eyeRed = new THREE.MeshBasicMaterial({ color: 0xff3a30, toneMapped: false 
 const eyeYellow = new THREE.MeshBasicMaterial({ color: 0xffe14a, toneMapped: false })
 const eyeOrange = new THREE.MeshBasicMaterial({ color: 0xff8a1e, toneMapped: false })
 const eyeCyan = new THREE.MeshBasicMaterial({ color: 0x4ff0ff, toneMapped: false })
+const eyeGreen = new THREE.MeshBasicMaterial({ color: 0x7aff7a, toneMapped: false })
+const eyePurple = new THREE.MeshBasicMaterial({ color: 0xd070ff, toneMapped: false })
 const eyeWhite = new THREE.MeshBasicMaterial({ color: 0xeaffd0, toneMapped: false })
 const mouthMat = stdMat(0x1a0d0d)
 const barBgMat = new THREE.MeshBasicMaterial({ color: 0x07090f, transparent: true, opacity: 0.75, depthTest: false, depthWrite: false })
@@ -191,7 +193,14 @@ function bakeRig(r: Rig): Rig {
 }
 
 function buildRig(kind: ZombieKind): Rig {
-  return bakeRig(buildRigRaw(kind))
+  const r = bakeRig(buildRigRaw(kind))
+  // swarm fodder is cheap: skip their shadows to save draw calls
+  if (kind === 'skeleton' || kind === 'crawler') {
+    r.root.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.castShadow = false
+    })
+  }
+  return r
 }
 
 function buildRigRaw(kind: ZombieKind): Rig {
@@ -256,6 +265,39 @@ function buildRigRaw(kind: ZombieKind): Rig {
       for (let i = 0; i < 4; i++) addBox(r.upper, 0.1, 0.34, 0.1, metal, -0.3 + i * 0.2, 0.45 + (i % 2) * 0.1, -0.3)
       addBox(r.head, 0.08, 0.26, 0.08, stdMat(0xd8d2c0), -0.2, 0.52, 0, true)
       addBox(r.head, 0.08, 0.26, 0.08, stdMat(0xd8d2c0), 0.2, 0.52, 0, true)
+      return r
+    }
+    case 'skeleton': {
+      const r = humanoid({
+        skin: 0xe6e0c8, shirt: 0xd8d2b8, pants: 0xcfc8b0, accent: 0x6a6450, scale: def.scale,
+        tw: 0.42, td: 0.26, th: 0.62, hs: 0.44, aw: 0.11, armLen: 0.72, lw: 0.14, eye: eyeGreen,
+      })
+      const dark = stdMat(0x1c1a16)
+      for (let i = 0; i < 3; i++) addBox(r.upper, 0.44, 0.05, 0.28, dark, 0, 0.16 + i * 0.15, 0)
+      addBox(r.armR, 0.05, 0.55, 0.05, stdMat(0x8a8a92, { metal: 0.6, rough: 0.4 }), 0, -0.98, 0.08)
+      return r
+    }
+    case 'witch': {
+      const r = humanoid({
+        skin: 0xc9b4d6, shirt: 0x3a1f5c, pants: 0x2a1544, accent: 0x15091f, scale: def.scale,
+        tw: 0.58, td: 0.36, th: 0.74, hs: 0.46, aw: 0.16, armLen: 0.7, lw: 0.24, eye: eyePurple,
+      })
+      const robe = stdMat(0x3a1f5c, { rough: 0.95 })
+      const trim = stdMat(0xd8a21c)
+      const hat = stdMat(0x2a1544)
+      addBox(r.upper, 0.84, 0.64, 0.58, robe, 0, -0.18, 0)
+      addBox(r.upper, 0.86, 0.06, 0.6, trim, 0, -0.48, 0)
+      addBox(r.head, 0.8, 0.06, 0.8, hat, 0, 0.5, 0)
+      addBox(r.head, 0.52, 0.06, 0.52, trim, 0, 0.56, 0)
+      addBox(r.head, 0.5, 0.22, 0.5, hat, 0, 0.67, 0)
+      addBox(r.head, 0.34, 0.22, 0.34, hat, 0.02, 0.88, 0)
+      addBox(r.head, 0.18, 0.22, 0.18, hat, 0.06, 1.09, 0)
+      const glow = new THREE.MeshStandardMaterial({ color: 0xd070ff, emissive: 0xb040ff, emissiveIntensity: 1.8, roughness: 0.4 })
+      r.glows.push(glow)
+      addBox(r.upper, 0.07, 1.9, 0.07, stdMat(0x4a3320), 0.58, 0.1, 0.36)
+      addBox(r.upper, 0.22, 0.22, 0.22, glow, 0.58, 1.12, 0.36, false)
+      addBox(r.upper, 0.34, 0.06, 0.34, stdMat(0x6a5a40), 0.58, 1.0, 0.36, false)
+      r.bar.position.y += 0.7 * def.scale
       return r
     }
     case 'leaper': {
@@ -382,7 +424,7 @@ function buildRigRaw(kind: ZombieKind): Rig {
 export type ZState =
   | 'chase' | 'windup' | 'recover' | 'fuse' | 'spit'
   | 'slamWindup' | 'chargeWindup' | 'charge' | 'stun' | 'roar' | 'dying'
-  | 'crouch' | 'leap' | 'shriek'
+  | 'crouch' | 'leap' | 'shriek' | 'summon' | 'rise'
 
 const tmpDir = { x: 0, z: 0 }
 
@@ -589,7 +631,7 @@ export class Zombie {
     const ux = dx / dist
     const uz = dz / dist
 
-    if (this.groanT <= 0 && g.state === 'playing') {
+    if (this.groanT <= 0 && g.state === 'playing' && this.kind !== 'skeleton') {
       g.audio.groan(this.kind, dist, clamp((this.x - p.x) / 30, -1, 1))
       this.groanT = (this.kind === 'runner' ? rand(2, 5) : rand(3.5, 8))
     }
@@ -603,9 +645,9 @@ export class Zombie {
     switch (this.state) {
       case 'chase': {
         const d = this.pathDir(g, dist, ux, uz)
-        if (this.kind === 'spitter' || this.kind === 'screamer') {
-          const near = this.kind === 'screamer' ? 9 : 8
-          const far = this.kind === 'screamer' ? 15 : 13
+        if (this.kind === 'spitter' || this.kind === 'screamer' || this.kind === 'witch') {
+          const near = this.kind === 'witch' ? 8 : this.kind === 'screamer' ? 9 : 8
+          const far = this.kind === 'witch' ? 12.5 : this.kind === 'screamer' ? 15 : 13
           this.spitCd -= dt
           if (dist < near) {
             tvx = -ux * spd * 0.9; tvz = -uz * spd * 0.9
@@ -616,7 +658,16 @@ export class Zombie {
             if (chance(dt * 0.25)) this.strafe *= -1
           }
           faceX = ux; faceZ = uz
-          if (this.kind === 'screamer') {
+          if (this.kind === 'witch') {
+            if (this.spitCd <= 0 && dist < 45 && g.skeletonRoom() > 0) {
+              this.state = 'summon'
+              this.t = 0
+              this.hitDone = false
+              this.spitCd = rand(4, 5.2)
+              g.effects.ring(this.x, this.z, 0.5, 5.5, 0xb48cff, 1.0)
+              g.audio.summon(dist)
+            }
+          } else if (this.kind === 'screamer') {
             if (this.spitCd <= 0 && dist < 30) {
               this.state = 'shriek'
               this.t = 0
@@ -677,6 +728,32 @@ export class Zombie {
             this.t = 0
             this.hitDone = false
           }
+        }
+        break
+      }
+      case 'summon': {
+        faceX = ux
+        faceZ = uz
+        if (Math.random() < dt * 45) {
+          g.effects.glow.emit({
+            x: this.x + rand(-1.8, 1.8), y: 0.2, z: this.z + rand(-1.8, 1.8),
+            vy: rand(2, 5), life: 0.6, size: 0.16, grav: -2, color: 0xb48cff, fade: true,
+          })
+        }
+        if (!this.hitDone && this.t >= 0.85) {
+          this.hitDone = true
+          g.summonSkeletons(this, Math.min(12, 6 + Math.floor((g.wave - 7) / 2)))
+        }
+        if (this.t >= 1.35) {
+          this.state = 'chase'
+          this.t = 0
+        }
+        break
+      }
+      case 'rise': {
+        if (this.t >= 0.75) {
+          this.state = 'chase'
+          this.t = 0
         }
         break
       }
@@ -953,6 +1030,20 @@ export class Zombie {
 
     if (K === 'splitter') scaleY = 1 + Math.sin(this.t * 4 + this.id) * 0.04
     switch (this.state) {
+      case 'summon': {
+        const k = clamp(this.t / 0.4, 0, 1)
+        armL = armR = lerpN(armBase, -2.7, k)
+        lean = lerpN(lean, -0.25, k)
+        r.body.position.y = Math.sin(this.t * 12) * 0.05 + 0.12 * k
+        break
+      }
+      case 'rise': {
+        const k = clamp(this.t / 0.75, 0, 1)
+        r.body.position.y = -(1 - k) * 1.4 * this.def.scale
+        armL = armR = lerpN(-2.6, armBase, k)
+        lean = 0
+        break
+      }
       case 'crouch': {
         const k = clamp(this.t / 0.5, 0, 1)
         lean = lerpN(lean, 0.75, k)
@@ -1050,7 +1141,7 @@ export class Zombie {
 
     // glow pulsing
     if (r.glows.length) {
-      const pulse = 1.1 + Math.sin(this.t * 6 + this.id) * 0.6 + (this.state === 'fuse' ? Math.sin(this.t * 40) * 1.2 + 1.2 : 0)
+      const pulse = 1.1 + Math.sin(this.t * 6 + this.id) * 0.6 + (this.state === 'fuse' ? Math.sin(this.t * 40) * 1.2 + 1.2 : 0) + (this.state === 'summon' ? 2.2 : 0)
       for (const m of r.glows) m.emissiveIntensity = Math.max(0.3, pulse)
     }
   }
@@ -1093,7 +1184,7 @@ function lerpN(a: number, b: number, t: number) {
 
 /* ------------------------------------------------------------------ pool */
 export class ZombiePool {
-  private free: Record<ZombieKind, Zombie[]> = { walker: [], runner: [], spitter: [], bloater: [], brute: [], boss: [], leaper: [], riot: [], screamer: [], splitter: [], crawler: [] }
+  private free: Record<ZombieKind, Zombie[]> = { walker: [], runner: [], spitter: [], bloater: [], brute: [], boss: [], leaper: [], riot: [], screamer: [], splitter: [], crawler: [], witch: [], skeleton: [] }
 
   constructor(private scene: THREE.Scene) {}
 

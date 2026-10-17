@@ -31,14 +31,14 @@ export interface DamageOpts {
 
 const BLOOD: Record<ZombieKind, number> = {
   walker: 0x6a1212, runner: 0x7a5a10, spitter: 0x4a7a1a, bloater: 0x8a7a1a, brute: 0x5a0e0e, boss: 0x4a1a5a,
-  leaper: 0x2a5a7a, riot: 0x4a1218, screamer: 0x5a3a8a, splitter: 0x8a1a4a, crawler: 0x3a5a1a,
+  leaper: 0x2a5a7a, riot: 0x4a1218, screamer: 0x5a3a8a, splitter: 0x8a1a4a, crawler: 0x3a5a1a, witch: 0x5a2a7a, skeleton: 0xcfc8b0,
 }
 
 const AIM_Y = 1.0
 
 const MAP_COLOR: Record<ZombieKind, string> = {
   walker: '#ff4a5a', runner: '#ffd23a', spitter: '#b6ff3a', bloater: '#ff9a2a', brute: '#ff6a3a', boss: '#ff2a6a',
-  leaper: '#4ff0ff', riot: '#6a8aff', screamer: '#c08cff', splitter: '#ff4aa0', crawler: '#9ad06a',
+  leaper: '#4ff0ff', riot: '#6a8aff', screamer: '#c08cff', splitter: '#ff4aa0', crawler: '#9ad06a', witch: '#d070ff', skeleton: '#d8d2c0',
 }
 
 export class Game {
@@ -101,6 +101,7 @@ export class Game {
   private modeT = 0
   private navT = 0
   private aliveCount = 0
+  private aliveRegular = 0
   boss: Zombie | null = null
 
   // score
@@ -475,11 +476,16 @@ export class Game {
 
     // zombies
     let alive = 0
+    let regular = 0
     for (const z of this.zombies) {
       z.update(dt, this)
-      if (z.alive) alive++
+      if (z.alive) {
+        alive++
+        if (z.kind !== 'skeleton') regular++
+      }
     }
     this.aliveCount = alive
+    this.aliveRegular = regular
     this.separate()
     for (let i = this.zombies.length - 1; i >= 0; i--) {
       if (this.zombies[i].dead) {
@@ -731,6 +737,34 @@ export class Game {
     if (z.hp <= 0) this.killZombie(z, { dx: o.dx, dz: o.dz, blast: o.blast })
   }
 
+  /** How many more skeletons can be raised (global cap keeps frame rate sane). */
+  skeletonRoom() {
+    let n = 0
+    for (const z of this.zombies) if (z.alive && z.kind === 'skeleton') n++
+    return Math.max(0, 55 - n)
+  }
+
+  /** Witch cast: a ring of skeletons claws its way out of the ground around her. */
+  summonSkeletons(w: Zombie, count: number) {
+    const n = Math.min(count, this.skeletonRoom())
+    const p = this.player
+    this.effects.ring(w.x, w.z, 0.8, 7.5, 0xb48cff, 0.7)
+    this.effects.ring(w.x, w.z, 0.4, 4.5, 0xe8d8ff, 0.5)
+    this.effects.glow.emit({ x: w.x, y: 1.2, z: w.z, life: 0.3, size: 2.4, grav: 0, color: 0xb48cff, fade: true })
+    this.audio.rise(Math.hypot(w.x - p.x, w.z - p.z))
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rand(-0.25, 0.25)
+      const d = rand(1.8, 3.8)
+      const x = clamp(w.x + Math.cos(a) * d, -41, 41)
+      const z = clamp(w.z + Math.sin(a) * d, -41, 41)
+      const s = this.spawnZombie('skeleton', x, z)
+      s.state = 'rise'
+      s.t = 0
+      this.effects.gibs(x, z, [0xe6e0c8, 0xcfc8b0, 0x6a6450], 3, 0.5, 0.6)
+      this.effects.glow.emit({ x, y: 0.3, z, vy: 3, life: 0.5, size: 0.4, grav: -1, color: 0xb48cff, fade: true })
+    }
+  }
+
   /** Screamer shriek: enrages every zombie nearby (faster for a few seconds). */
   screamerBuff(z: Zombie) {
     const p = this.player
@@ -764,7 +798,7 @@ export class Game {
     const dx = o.dx ?? rand(-1, 1)
     const dz = o.dz ?? rand(-1, 1)
     z.knock(dx, dz, o.blast ? 7 : 4)
-    const n = { walker: 9, runner: 8, spitter: 9, bloater: 16, brute: 24, boss: 70, leaper: 8, riot: 14, screamer: 7, splitter: 16, crawler: 4 }[z.kind]
+    const n = { walker: 9, runner: 8, spitter: 9, bloater: 16, brute: 24, boss: 70, leaper: 8, riot: 14, screamer: 7, splitter: 16, crawler: 4, witch: 12, skeleton: 6 }[z.kind]
     this.effects.gibs(z.x, z.z, z.rig.baseColors, n, def.scale * 0.8, o.blast ? 1.5 : 1)
     this.effects.decal(z.x, z.z, 1.5 * def.scale, BLOOD[z.kind])
     for (let i = 0; i < 3; i++) {
@@ -804,7 +838,7 @@ export class Game {
 
   private rollDrops(z: Zombie) {
     const p = this.player
-    const base = { walker: 0.1, runner: 0.1, spitter: 0.2, bloater: 0.24, brute: 0.5, boss: 1, leaper: 0.12, riot: 0.35, screamer: 0.3, splitter: 0.3, crawler: 0.04 }[z.kind]
+    const base = { walker: 0.1, runner: 0.1, spitter: 0.2, bloater: 0.24, brute: 0.5, boss: 1, leaper: 0.12, riot: 0.35, screamer: 0.3, splitter: 0.3, crawler: 0.04, witch: 0.45, skeleton: 0.02 }[z.kind]
     const scav = 1 + 0.35 * p.perk('scav')
     const count = z.kind === 'boss' ? 5 : 1
     for (let i = 0; i < count; i++) {
@@ -893,13 +927,14 @@ export class Game {
     if (this.queue.length === 0) return
     this.spawnT -= dt
     if (this.spawnT > 0) return
-    const maxAlive = Math.min(64, 18 + this.wave * 3)
-    if (this.aliveCount >= maxAlive) {
+    // summoned skeletons do not count against the field cap, so the horde keeps flowing
+    const maxAlive = Math.min(80, 26 + this.wave * 4)
+    if (this.aliveRegular >= maxAlive) {
       this.spawnT = 0.3
       return
     }
     // spawn in small groups for a swarm feel
-    const group = Math.min(this.queue.length, 1 + Math.floor(Math.random() * (1 + Math.min(3, this.wave / 3))))
+    const group = Math.min(this.queue.length, 1 + Math.floor(Math.random() * (2 + Math.min(5, this.wave / 2))))
     const first = this.queue[0]
     const sp = this.pickSpawn(first)
     for (let i = 0; i < group; i++) {
@@ -910,7 +945,7 @@ export class Game {
         this.audio.roar()
       }
     }
-    this.spawnT = rand(0.35, 0.95) * Math.max(0.35, 1 - this.wave * 0.04)
+    this.spawnT = rand(0.3, 0.8) * Math.max(0.3, 1 - this.wave * 0.04)
   }
 
   private waveCleared() {
