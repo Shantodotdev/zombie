@@ -60,6 +60,25 @@ export class Combat {
     }
   }
 
+  /** Where would a shot along this ray end? Used by the laser sight. */
+  probe(ox: number, oz: number, dx: number, dz: number, range: number): { t: number; kind: 'zombie' | 'barrel' | 'wall' | 'none' } {
+    const g = this.g
+    const wallT = rayCols(ox, oz, dx, dz, range, g.world.colliders, true)
+    let best = wallT
+    let kind: 'zombie' | 'barrel' | 'wall' | 'none' = wallT < range ? 'wall' : 'none'
+    for (const z of g.zombies) {
+      if (!z.alive) continue
+      const t = rayCircle(ox, oz, dx, dz, z.x, z.z, z.hitRadius)
+      if (t < best) { best = t; kind = 'zombie' }
+    }
+    for (const b of g.world.barrels) {
+      if (!b.alive) continue
+      const t = rayCircle(ox, oz, dx, dz, b.x, b.z, 0.55)
+      if (t < best) { best = t; kind = 'barrel' }
+    }
+    return { t: best, kind }
+  }
+
   private hitscan(ox: number, oz: number, dx: number, dz: number, def: WeaponDef, isRail: boolean) {
     const g = this.g
     const p = g.player

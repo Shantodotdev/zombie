@@ -22,6 +22,7 @@ npm run preview    # serve the production build
 | G or right click | Frag grenade |
 | R | Reload |
 | 1-4, Q | Carbine, Breacher shotgun, Vectors dual SMGs, Railgun / last weapon |
+| L | Toggle laser sight |
 | Mouse wheel | Zoom the camera |
 | Esc / P, M | Pause, mute |
 

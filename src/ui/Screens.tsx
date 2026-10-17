@@ -38,6 +38,7 @@ export function MenuScreen({ game }: { game: Game }) {
           <div><Keycap>G</Keycap><span>Frag grenade</span></div>
           <div><Keycap>R</Keycap><span>Reload</span></div>
           <div><Keycap>1</Keycap>–<Keycap>4</Keycap><span>Weapons</span></div>
+          <div><Keycap>L</Keycap><span>Laser sight</span></div>
           <div><Keycap>Wheel</Keycap><span>Zoom camera</span></div>
           <div><Keycap>Esc</Keycap><span>Pause</span></div>
         </div>

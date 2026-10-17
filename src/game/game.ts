@@ -4,6 +4,7 @@ import { AudioEngine } from './audio'
 import { Combat } from './combat'
 import { Effects } from './effects'
 import { Input } from './input'
+import { Laser } from './laser'
 import { Pickups, type PickupKind } from './pickups'
 import { Player } from './player'
 import { Projectiles } from './projectiles'
@@ -44,6 +45,7 @@ export class Game {
   projectiles: Projectiles
   pickups: Pickups
   combat: Combat
+  laser: Laser
   pool: ZombiePool
   zombies: Zombie[] = []
 
@@ -163,6 +165,7 @@ export class Game {
     this.projectiles = new Projectiles(this.scene, this)
     this.pickups = new Pickups(this.scene, this)
     this.combat = new Combat(this)
+    this.laser = new Laser(this.scene)
     this.pool = new ZombiePool(this.scene)
     this.drawMinimapStatic()
 
@@ -330,6 +333,10 @@ export class Game {
 
     // global keys
     if (inp.pressed('KeyM')) this.toggleMute()
+    if (inp.pressed('KeyL') && this.state === 'playing') {
+      this.laser.enabled = !this.laser.enabled
+      this.effects.number(this.player.x, 2.5, this.player.z, this.laser.enabled ? 'LASER ON' : 'LASER OFF', 'info')
+    }
     if (inp.pressed('Escape') || inp.pressed('KeyP')) {
       if (this.state === 'playing') this.pause()
       else if (this.state === 'paused') this.resume()
@@ -352,6 +359,7 @@ export class Game {
       for (const z of this.zombies) if (z.state === 'dying') z.update(rawDt, this)
     }
 
+    this.laser.update(this, this.realT)
     this.world.update(this.realT, rawDt, this.camera.position, this.player.x, this.player.z)
     this.updateCamera(rawDt, false)
     this.updateCrosshair()
