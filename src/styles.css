@@ -255,3 +255,9 @@ kbd {
   .controls { grid-template-columns: 1fr; }
 }
 
+
+.aim-ring {
+  position: absolute; left: 0; top: 0; border-radius: 50%; pointer-events: none; opacity: 0; will-change: transform;
+  border: 1px dashed rgba(255, 255, 255, 0.16); box-shadow: inset 0 0 40px rgba(94, 233, 255, 0.04); transition: opacity 0.2s;
+}
+.aim-ring.on { opacity: 1; }

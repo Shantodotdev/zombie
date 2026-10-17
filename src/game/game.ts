@@ -64,6 +64,11 @@ export class Game {
   private container: HTMLElement
   private numbersLayer: HTMLDivElement
   private crosshair: HTMLDivElement
+  private aimRing: HTMLDivElement
+  private cursorX = 0
+  private cursorY = 0
+  private playerSx = 0
+  private playerSy = 0
   private minimap: HTMLCanvasElement
   private minimapStatic: HTMLCanvasElement
   private w = 1
@@ -150,6 +155,9 @@ export class Game {
     this.crosshair.className = 'crosshair'
     this.crosshair.innerHTML = '<div class="ch-ring"></div><div class="ch-dot"></div><div class="ch-prog"></div>'
     container.appendChild(this.crosshair)
+    this.aimRing = document.createElement('div')
+    this.aimRing.className = 'aim-ring'
+    container.appendChild(this.aimRing)
     this.minimap = document.createElement('canvas')
     this.minimap.className = 'minimap'
     this.minimap.width = this.minimap.height = 180
@@ -178,6 +186,12 @@ export class Game {
     }
     window.addEventListener('blur', onBlur)
     this.disposers.push(() => window.removeEventListener('blur', onBlur))
+    // losing pointer lock mid-game (Esc) pauses so the cursor is usable again
+    const onLock = () => {
+      if (!document.pointerLockElement && this.state === 'playing') this.pause()
+    }
+    document.addEventListener('pointerlockchange', onLock)
+    this.disposers.push(() => document.removeEventListener('pointerlockchange', onLock))
 
     this.target.set(0, 0, 0)
     this.updateCamera(0.016, true)
@@ -185,6 +199,23 @@ export class Game {
     this.raf = requestAnimationFrame(this.frame)
 
     if (import.meta.env.DEV) (window as unknown as { __game: Game }).__game = this
+  }
+
+  /* ------------------------------------------------------------ cursor lock */
+  private lockPointer() {
+    if (document.pointerLockElement === this.container) return
+    try {
+      const r = this.container.requestPointerLock() as unknown
+      if (r && typeof (r as Promise<void>).catch === 'function') (r as Promise<void>).catch(() => {})
+    } catch { /* ignore */ }
+  }
+
+  private unlockPointer() {
+    if (document.pointerLockElement) document.exitPointerLock()
+  }
+
+  private aimRadius() {
+    return clamp(Math.min(this.w, this.h) * 0.3, 150, 320)
   }
 
   /* ------------------------------------------------------------ public API */
@@ -195,6 +226,9 @@ export class Game {
     this.state = 'playing'
     this.waveMode = 'inter'
     this.modeT = 2.2
+    this.input.virtX = 0
+    this.input.virtY = -this.aimRadius() * 0.55
+    this.lockPointer()
     this.banner('GET READY', 'Hold the intersection', 'normal')
     this.pushPhase()
   }
@@ -203,6 +237,7 @@ export class Game {
     if (this.state !== 'playing') return
     this.state = 'paused'
     this.input.reset()
+    this.unlockPointer()
     this.audio.suspend()
     this.pushPhase()
   }
@@ -210,6 +245,7 @@ export class Game {
   resume() {
     if (this.state !== 'paused') return
     this.state = 'playing'
+    this.lockPointer()
     this.audio.resume()
     this.pushPhase()
   }
@@ -217,6 +253,7 @@ export class Game {
   toMenu() {
     this.resetRun()
     this.state = 'menu'
+    this.unlockPointer()
     this.audio.intensity = 0
     this.audio.resume()
     this.pushPhase()
@@ -236,6 +273,7 @@ export class Game {
     this.state = 'playing'
     this.waveMode = 'inter'
     this.modeT = 3.4
+    this.lockPointer()
     this.banner(`WAVE ${this.wave + 1}`, 'Incoming…', 'normal')
     hud.set({ perks: this.player.perks, perkChoices: [] })
     this.pushPhase()
@@ -251,6 +289,7 @@ export class Game {
     this.renderer.domElement.remove()
     this.numbersLayer.remove()
     this.crosshair.remove()
+    this.aimRing.remove()
     this.minimap.remove()
   }
 
@@ -438,8 +477,22 @@ export class Game {
   /* ----------------------------------------------------------------- aim */
   private computeAim() {
     const cam = this.camera
-    const nx = (this.input.mouseX / this.w) * 2 - 1
-    const ny = -(this.input.mouseY / this.h) * 2 + 1
+    const p = this.player
+    const inp = this.input
+    // the cursor is "hijacked": it only exists as an offset from the player, clamped to a circle
+    const R = this.aimRadius()
+    const l = Math.hypot(inp.virtX, inp.virtY)
+    if (l > R) {
+      inp.virtX *= R / l
+      inp.virtY *= R / l
+    }
+    const pv = new THREE.Vector3(p.x, AIM_Y, p.z).project(cam)
+    this.playerSx = (pv.x * 0.5 + 0.5) * this.w
+    this.playerSy = (-pv.y * 0.5 + 0.5) * this.h
+    this.cursorX = this.playerSx + inp.virtX
+    this.cursorY = this.playerSy + inp.virtY
+    const nx = (this.cursorX / this.w) * 2 - 1
+    const ny = -(this.cursorY / this.h) * 2 + 1
     const v = new THREE.Vector3(nx, ny, 0.5).unproject(cam)
     v.sub(cam.position).normalize()
     if (v.y < -0.01) {
@@ -505,12 +558,16 @@ export class Game {
   private updateCrosshair() {
     const on = this.state === 'playing'
     this.crosshair.classList.toggle('on', on)
+    this.aimRing.classList.toggle('on', on)
     this.container.classList.toggle('hide-cursor', on)
     if (!on) return
     const p = this.player
     const spread = WEAPONS[p.weapon].spread * (1 + p.heat * 0.9)
     const size = 26 + spread * 2.2
-    this.crosshair.style.transform = `translate(${this.input.mouseX}px, ${this.input.mouseY}px)`
+    this.crosshair.style.transform = `translate(${this.cursorX.toFixed(1)}px, ${this.cursorY.toFixed(1)}px)`
+    const R = this.aimRadius()
+    this.aimRing.style.width = this.aimRing.style.height = `${(R * 2).toFixed(0)}px`
+    this.aimRing.style.transform = `translate(${this.playerSx.toFixed(1)}px, ${this.playerSy.toFixed(1)}px) translate(-50%, -50%)`
     this.crosshair.style.setProperty('--size', `${size.toFixed(1)}px`)
     const rf = p.reloadT >= 0 ? clamp(p.reloadT / p.reloadDur, 0, 1) : 0
     this.crosshair.style.setProperty('--prog', `${(rf * 360).toFixed(0)}deg`)
@@ -790,12 +847,14 @@ export class Game {
     }
     this.state = 'upgrade'
     this.input.reset()
+    this.unlockPointer()
     hud.set({ perkChoices: choices })
     this.pushPhase()
   }
 
   private finishRun() {
     this.state = 'gameover'
+    this.unlockPointer()
     this.timeScale = 1
     const newBest = this.score > this.best
     if (newBest) {

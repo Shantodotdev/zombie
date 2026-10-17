@@ -5,15 +5,16 @@ import type { Game } from './game'
 const COLD = new THREE.Color(0xff2a2a)
 const HOT = new THREE.Color(0xffe9a0)
 
-const SPACING = 0.85
-const DOT_SIZE = 0.11
-const MAX_DOTS = 130
+const SPACING = 0.55
+const DOT_W = 0.045
+const DOT_L = 0.22
+const MAX_DOTS = 200
 const dummy = new THREE.Object3D()
 const tmpColor = new THREE.Color()
 
 /**
- * Dotted laser pointer: a marching line of dots from the muzzle to the first thing
- * the shot would hit, ending in a pulsing target dot.
+ * Thin dotted laser pointer: a static line of small dashes from the muzzle to the first
+ * thing the shot would hit, ending in a small target dot.
  */
 export class Laser {
   enabled = true
@@ -49,7 +50,7 @@ export class Laser {
     this.group.visible = false
   }
 
-  update(g: Game, t: number) {
+  update(g: Game, _t: number) {
     const p = g.player
     if (!this.enabled || !p.alive || g.state !== 'playing') {
       this.group.visible = false
@@ -69,7 +70,6 @@ export class Laser {
     let endZ = 0
     let endY = 1.3
     let hot = false
-    const march = (t * 5) % SPACING
 
     for (let i = 0; i < beams; i++) {
       const save = p.side
@@ -79,12 +79,11 @@ export class Laser {
       const probe = g.combat.probe(m.x, m.z, dx, dz, range)
       const len = probe.t
       // marching dots; later dots fade out with distance
-      for (let d = march; d < len - 0.15 && n < MAX_DOTS; d += SPACING) {
+      for (let d = SPACING; d < len - 0.1 && n < MAX_DOTS; d += SPACING) {
         const fade = 1 - Math.min(1, d / range) * 0.75
         dummy.position.set(m.x + dx * d, m.y, m.z + dz * d)
         dummy.rotation.set(0, Math.atan2(dx, dz), 0)
-        const s = DOT_SIZE * (0.8 + 0.4 * fade)
-        dummy.scale.set(s, s, s * 1.8)
+        dummy.scale.set(DOT_W, DOT_W, DOT_L)
         dummy.updateMatrix()
         this.dots.setMatrixAt(n, dummy.matrix)
         this.dots.setColorAt(n, tmpColor.setScalar(fade))
@@ -108,14 +107,12 @@ export class Laser {
     this.endMat.color.copy(color)
     this.endMat.opacity = alpha
     this.haloMat.color.copy(color)
-    this.haloMat.opacity = 0.35 * alpha
+    this.haloMat.opacity = 0.25 * alpha
 
-    const pulse = 1 + Math.sin(t * 18) * 0.15
-    const s = (hot ? 0.3 : 0.2) * pulse
+    const s = hot ? 0.14 : 0.09
     this.end.position.set(endX, endY, endZ)
     this.end.scale.set(s, s, s)
-    this.end.rotation.y = t * 3
-    const h = (hot ? 0.75 : 0.5) * pulse
+    const h = hot ? 0.34 : 0.2
     this.halo.position.set(endX, endY, endZ)
     this.halo.scale.set(h, h, h)
   }

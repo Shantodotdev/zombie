@@ -17,7 +17,7 @@ npm run preview    # serve the production build
 | Input | Action |
 |---|---|
 | W A S D / arrows | Move (screen-relative) |
-| Mouse / left click | Aim / fire |
+| Mouse / left click | Aim / fire (cursor is locked to a circle around your operative) |
 | Space | Dash (i-frames, cooldown) |
 | G or right click | Frag grenade |
 | R | Reload |

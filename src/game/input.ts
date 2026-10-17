@@ -3,6 +3,9 @@ export class Input {
   private pressedSet = new Set<string>()
   mouseX = 0
   mouseY = 0
+  /** virtual cursor offset (px) from the player's on-screen position; driven by relative mouse motion */
+  virtX = 0
+  virtY = -140
   fire = false
   altFire = false
   altPressed = false
@@ -30,6 +33,8 @@ export class Input {
     on(window, 'mousemove', (e: MouseEvent) => {
       this.mouseX = e.clientX
       this.mouseY = e.clientY
+      this.virtX += e.movementX
+      this.virtY += e.movementY
     })
     on(target, 'mousedown', (e: MouseEvent) => {
       this.mouseX = e.clientX
