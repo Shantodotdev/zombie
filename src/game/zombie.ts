@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ZOMBIES, type ZombieDef, type ZombieKind } from './config'
 import { resolveCircle } from './collision'
 import { addBox, newMat, stdMat } from './voxel'
-import { angleDiff, chance, clamp, dampAngle, pick, rand, TAU } from './util'
+import { angleDiff, chance, clamp, dampAngle, lerp, pick, rand, TAU } from './util'
 import type { Game } from './game'
 
 /* ------------------------------------------------------------------ rigs */
@@ -26,12 +26,14 @@ export interface Rig {
   slamFill?: THREE.Mesh
   slamRing?: THREE.Mesh
   chargeLine?: THREE.Mesh
+  shield?: THREE.Group
   baseColors: number[]
 }
 
 const eyeRed = new THREE.MeshBasicMaterial({ color: 0xff3a30, toneMapped: false })
 const eyeYellow = new THREE.MeshBasicMaterial({ color: 0xffe14a, toneMapped: false })
 const eyeOrange = new THREE.MeshBasicMaterial({ color: 0xff8a1e, toneMapped: false })
+const eyeCyan = new THREE.MeshBasicMaterial({ color: 0x4ff0ff, toneMapped: false })
 const eyeWhite = new THREE.MeshBasicMaterial({ color: 0xeaffd0, toneMapped: false })
 const mouthMat = stdMat(0x1a0d0d)
 const barBgMat = new THREE.MeshBasicMaterial({ color: 0x07090f, transparent: true, opacity: 0.75, depthTest: false, depthWrite: false })
@@ -256,6 +258,71 @@ function buildRigRaw(kind: ZombieKind): Rig {
       addBox(r.head, 0.08, 0.26, 0.08, stdMat(0xd8d2c0), 0.2, 0.52, 0, true)
       return r
     }
+    case 'leaper': {
+      const r = humanoid({
+        skin: 0x9fc2d6, shirt: 0x2d3a4a, pants: 0x232c38, accent: 0x15191f, scale: def.scale,
+        tw: 0.5, td: 0.3, th: 0.7, hs: 0.42, aw: 0.15, armLen: 0.95, lw: 0.2, eye: eyeCyan,
+      })
+      const bone = stdMat(0xd8d2c0)
+      for (let i = 0; i < 3; i++) addBox(r.upper, 0.08, 0.22, 0.08, bone, -0.15 + i * 0.15, 0.62, -0.22)
+      addBox(r.armL, 0.05, 0.22, 0.05, bone, 0, -1.14, 0.05)
+      addBox(r.armR, 0.05, 0.22, 0.05, bone, 0, -1.14, 0.05)
+      return r
+    }
+    case 'riot': {
+      const r = humanoid({
+        skin: 0x7a8a96, shirt: 0x24324a, pants: 0x1c2536, accent: 0x10151f, scale: def.scale,
+        tw: 0.8, td: 0.5, th: 0.8, hs: 0.44, aw: 0.24, armLen: 0.7, lw: 0.3, eye: eyeYellow,
+      })
+      addBox(r.head, 0.54, 0.3, 0.54, stdMat(0x2c3a52, { metal: 0.5, rough: 0.4 }), 0, 0.5, 0)
+      addBox(r.head, 0.46, 0.14, 0.06, stdMat(0x0f1624, { rough: 0.2, metal: 0.6 }), 0, 0.3, 0.28, false)
+      addBox(r.upper, 0.9, 0.18, 0.6, stdMat(0x2c3a52, { metal: 0.5 }), 0, 0.82, 0)
+      const shield = new THREE.Group()
+      shield.position.set(0, 0.5, 0.58)
+      const steel = stdMat(0x66748a, { metal: 0.6, rough: 0.35 })
+      addBox(shield, 1.1, 1.2, 0.12, steel, 0, 0, 0)
+      addBox(shield, 1.16, 0.12, 0.16, stdMat(0xd8a21c), 0, 0.6, 0, false)
+      addBox(shield, 1.16, 0.12, 0.16, stdMat(0xd8a21c), 0, -0.6, 0, false)
+      addBox(shield, 0.62, 0.2, 0.14, stdMat(0x0f1a2c, { rough: 0.1, metal: 0.7 }), 0, 0.22, 0.01, false)
+      r.upper.add(shield)
+      r.shield = shield
+      return r
+    }
+    case 'screamer': {
+      const r = humanoid({
+        skin: 0xb9a6d6, shirt: 0x3a2b52, pants: 0x241c33, accent: 0x15101f, scale: def.scale,
+        tw: 0.5, td: 0.3, th: 0.7, hs: 0.52, aw: 0.14, armLen: 0.8, lw: 0.2, eye: eyeWhite,
+      })
+      const glow = new THREE.MeshStandardMaterial({ color: 0xc08cff, emissive: 0xa060ff, emissiveIntensity: 1.6, roughness: 0.4 })
+      r.glows.push(glow)
+      addBox(r.head, 0.34, 0.26, 0.06, glow, 0, 0.16, 0.28, false)
+      const bone = stdMat(0xd8d2c0)
+      addBox(r.head, 0.08, 0.3, 0.08, bone, -0.2, 0.66, 0)
+      addBox(r.head, 0.08, 0.3, 0.08, bone, 0.2, 0.66, 0)
+      return r
+    }
+    case 'splitter': {
+      const r = humanoid({
+        skin: 0xd8708f, shirt: 0x7a2f55, pants: 0x4a2036, accent: 0x2a121e, scale: def.scale,
+        tw: 0.95, td: 0.8, th: 0.85, hs: 0.4, aw: 0.24, armLen: 0.7, lw: 0.3, eye: eyeYellow,
+      })
+      const glow = new THREE.MeshStandardMaterial({ color: 0xff4aa0, emissive: 0xff2a8a, emissiveIntensity: 1.4, roughness: 0.5 })
+      r.glows.push(glow)
+      for (let i = 0; i < 4; i++) {
+        addBox(r.upper, rand(0.25, 0.4), rand(0.25, 0.4), rand(0.2, 0.3), r.mats[0], rand(-0.4, 0.4), rand(0.2, 0.8), rand(-0.2, 0.45))
+      }
+      for (let i = 0; i < 3; i++) addBox(r.upper, 0.14, 0.14, 0.06, glow, rand(-0.3, 0.3), rand(0.2, 0.7), 0.43, false)
+      addBox(r.upper, 0.3, 0.3, 0.3, r.mats[0], 0.45, 1.0, 0.05)
+      addBox(r.upper, 0.07, 0.07, 0.03, eyeYellow, 0.4, 1.06, 0.21, false)
+      addBox(r.upper, 0.07, 0.07, 0.03, eyeYellow, 0.5, 1.06, 0.21, false)
+      return r
+    }
+    case 'crawler': {
+      return humanoid({
+        skin: 0x7a9a68, shirt: 0x4a3a30, pants: 0x2a2a30, accent: 0x15151a, scale: def.scale,
+        hs: 0.5, aw: 0.16, armLen: 0.8, lw: 0.2, eye: eyeRed,
+      })
+    }
     case 'boss': {
       const r = humanoid({
         skin: 0x5a2f6e, shirt: 0x2a1836, pants: 0x1c1226, accent: 0x120a18, scale: def.scale,
@@ -315,6 +382,7 @@ function buildRigRaw(kind: ZombieKind): Rig {
 export type ZState =
   | 'chase' | 'windup' | 'recover' | 'fuse' | 'spit'
   | 'slamWindup' | 'chargeWindup' | 'charge' | 'stun' | 'roar' | 'dying'
+  | 'crouch' | 'leap' | 'shriek'
 
 const tmpDir = { x: 0, z: 0 }
 
@@ -357,6 +425,19 @@ export class Zombie {
   lastDmgT = 0
   numAcc = 0
   numT = -1
+  burnT = 0
+  burnDps = 0
+  burnAcc = 0
+  slowT = 0
+  rageT = 0
+  shieldHp = 0
+  shielded = false
+  leapCd = 2
+  leapDur = 0.5
+  leapX0 = 0
+  leapZ0 = 0
+  leapX1 = 0
+  leapZ1 = 0
 
   constructor(kind: ZombieKind) {
     this.kind = kind
@@ -388,6 +469,11 @@ export class Zombie {
     this.stunT = 0
     this.numAcc = 0
     this.numT = -1
+    this.burnT = this.burnDps = this.burnAcc = 0
+    this.slowT = this.rageT = 0
+    this.shielded = this.kind === 'riot'
+    this.shieldHp = 150
+    this.leapCd = rand(0.5, 2.5)
     const hpScale = 1 + 0.09 * (wave - 1) + (this.kind === 'boss' ? 0.45 * (Math.floor(wave / 5) - 1) : 0)
     this.maxHp = this.hp = Math.round(this.def.hp * hpScale)
     this.speedMul = (1 + Math.min(0.3, wave * 0.02)) * rand(0.92, 1.1)
@@ -400,6 +486,7 @@ export class Zombie {
     r.bar.visible = false
     this.setFlash(0)
     if (r.slamFill) { r.slamFill.visible = false; r.slamRing!.visible = false; r.chargeLine!.visible = false }
+    if (r.shield) r.shield.visible = true
     if (this.kind === 'spitter') r.upper.rotation.x = 0.28
     else r.upper.rotation.x = 0
   }
@@ -411,15 +498,38 @@ export class Zombie {
 
   setFlash(f: number) {
     this.flash = f
+    this.refreshTint()
+  }
+
+  /** emissive tint: white hit flash, orange when burning, violet when enraged */
+  refreshTint() {
+    const b = this.burnT > 0 ? 0.35 + 0.15 * Math.sin(this.t * 30) : 0
+    const rg = this.rageT > 0 ? 0.3 : 0
+    const f = this.flash * 0.9
     for (const m of this.rig.mats) {
-      m.emissive.setRGB(f * 0.9, f * 0.9, f * 0.9)
+      m.emissive.setRGB(f + b * 0.9 + rg * 0.35, f + b * 0.35, f + rg * 0.6)
       m.emissiveIntensity = 1
     }
   }
 
+  ignite(t: number, dps: number) {
+    this.burnT = Math.max(this.burnT, t)
+    this.burnDps = Math.max(this.burnDps, dps)
+  }
+
+  breakShield(g: Game) {
+    if (!this.shielded) return
+    this.shielded = false
+    if (this.rig.shield) this.rig.shield.visible = false
+    this.speedMul *= 1.25
+    g.audio.shieldBreak()
+    g.effects.gibs(this.x + Math.sin(this.angle) * 0.7, this.z + Math.cos(this.angle) * 0.7, [0x66748a, 0xd8a21c, 0x3a4658], 12, 0.9, 1.1)
+    g.effects.number(this.x, this.rig.height + 0.6, this.z, 'SHIELD BROKEN', 'info')
+  }
+
   /** hp bar + flash after taking damage */
-  onDamaged() {
-    this.setFlash(1)
+  onDamaged(flash = true) {
+    if (flash) this.setFlash(1)
     if (!this.isBoss) {
       const f = clamp(this.hp / this.maxHp, 0, 1)
       this.rig.bar.visible = f < 0.999
@@ -438,12 +548,37 @@ export class Zombie {
     const r = this.rig
     const p = g.player
     this.t += dt
-    if (this.flash > 0) this.setFlash(Math.max(0, this.flash - dt * 7))
+    if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 7)
 
     if (this.state === 'dying') {
+      this.refreshTint()
       this.updateDeath(dt)
       return
     }
+
+    this.slowT -= dt
+    this.rageT -= dt
+    this.leapCd -= dt
+    if (this.burnT > 0) {
+      this.burnT -= dt
+      this.burnAcc += dt
+      if (Math.random() < dt * 26) {
+        g.effects.glow.emit({
+          x: this.x + rand(-0.3, 0.3), y: rand(0.2, r.height * 0.9), z: this.z + rand(-0.3, 0.3),
+          vy: rand(1.5, 3.5), life: 0.45, size: 0.22, grav: -2, color: pick([0xff7a1a, 0xffb02e, 0xffd76a]), fade: true,
+        })
+      }
+      if (Math.random() < dt * 5) g.effects.smoke(this.x, r.height, this.z, 1, 0x2a2a2e, 0.3, 0.35)
+      if (this.burnAcc >= 0.5) {
+        this.burnAcc -= 0.5
+        g.damageZombie(this, this.burnDps * 0.5, { dx: 0, dz: 0, knock: 0, fire: true, noShield: true })
+        if (!this.alive) return
+        for (const o of g.zombies) {
+          if (o !== this && o.alive && o.burnT < 0.5 && Math.abs(o.x - this.x) < 1.6 && Math.abs(o.z - this.z) < 1.6) o.ignite(2, this.burnDps * 0.7)
+        }
+      }
+    }
+    this.refreshTint()
 
     this.attackCd -= dt
     this.groanT -= dt
@@ -463,23 +598,32 @@ export class Zombie {
     let tvz = 0
     let faceX = ux
     let faceZ = uz
-    const spd = this.def.speed * this.speedMul
+    const spd = this.def.speed * this.speedMul * (this.slowT > 0 ? 0.4 : 1) * (this.rageT > 0 ? 1.45 : 1)
 
     switch (this.state) {
       case 'chase': {
         const d = this.pathDir(g, dist, ux, uz)
-        if (this.kind === 'spitter') {
+        if (this.kind === 'spitter' || this.kind === 'screamer') {
+          const near = this.kind === 'screamer' ? 9 : 8
+          const far = this.kind === 'screamer' ? 15 : 13
           this.spitCd -= dt
-          if (dist < 8) {
+          if (dist < near) {
             tvx = -ux * spd * 0.9; tvz = -uz * spd * 0.9
-          } else if (dist > 13) {
+          } else if (dist > far) {
             tvx = d.x * spd; tvz = d.z * spd
           } else {
             tvx = -uz * this.strafe * spd * 0.55; tvz = ux * this.strafe * spd * 0.55
             if (chance(dt * 0.25)) this.strafe *= -1
           }
           faceX = ux; faceZ = uz
-          if (this.spitCd <= 0 && dist < 17 && dist > 4) {
+          if (this.kind === 'screamer') {
+            if (this.spitCd <= 0 && dist < 30) {
+              this.state = 'shriek'
+              this.t = 0
+              this.hitDone = false
+              this.spitCd = rand(5, 7)
+            }
+          } else if (this.spitCd <= 0 && dist < 17 && dist > 4) {
             this.state = 'spit'
             this.t = 0
             g.audio.beep(true)
@@ -524,6 +668,10 @@ export class Zombie {
               this.state = 'windup'
               this.t = 0
             }
+          } else if (this.kind === 'leaper' && this.leapCd <= 0 && dist > 4.2 && dist < 11.5) {
+            this.state = 'crouch'
+            this.t = 0
+            this.hitDone = false
           } else if (dist < reach && this.attackCd <= 0) {
             this.state = 'windup'
             this.t = 0
@@ -532,13 +680,66 @@ export class Zombie {
         }
         break
       }
+      case 'crouch': {
+        faceX = ux
+        faceZ = uz
+        if (this.t >= 0.5) {
+          const lead = 0.25
+          let tx = p.x + p.vx * lead
+          let tz = p.z + p.vz * lead
+          const dd = Math.hypot(tx - this.x, tz - this.z)
+          if (dd > 12) {
+            tx = this.x + ((tx - this.x) / dd) * 12
+            tz = this.z + ((tz - this.z) / dd) * 12
+          }
+          this.leapX0 = this.x; this.leapZ0 = this.z
+          this.leapX1 = tx; this.leapZ1 = tz
+          this.leapDur = clamp(Math.min(dd, 12) / 17, 0.35, 0.7)
+          this.state = 'leap'
+          this.t = 0
+          g.audio.leap(dist)
+        }
+        break
+      }
+      case 'leap': {
+        const k = Math.min(1, this.t / this.leapDur)
+        this.x = lerp(this.leapX0, this.leapX1, k)
+        this.z = lerp(this.leapZ0, this.leapZ1, k)
+        this.vx = this.vz = this.kx = this.kz = 0
+        faceX = this.leapX1 - this.leapX0
+        faceZ = this.leapZ1 - this.leapZ0
+        if (k >= 1) {
+          g.effects.smoke(this.x, 0.2, this.z, 5, 0x8a8478, 0.8, 0.5)
+          g.effects.ring(this.x, this.z, 0.3, 2.2, 0xd8d2c0, 0.3)
+          g.audio.thud(dist)
+          if (Math.hypot(p.x - this.x, p.z - this.z) < 1.7) p.hurt(this.def.damage * 1.2 * this.dmgMul, this.x, this.z, 7, g)
+          this.state = 'recover'
+          this.t = 0
+          this.leapCd = rand(3.2, 4.6)
+          this.attackCd = 0.5
+        }
+        break
+      }
+      case 'shriek': {
+        faceX = ux
+        faceZ = uz
+        if (!this.hitDone && this.t >= 0.45) {
+          this.hitDone = true
+          g.screamerBuff(this)
+        }
+        if (this.t >= 1.0) {
+          this.state = 'chase'
+          this.t = 0
+        }
+        break
+      }
       case 'windup': {
-        const dur = this.kind === 'brute' ? 0.62 : this.kind === 'runner' ? 0.26 : this.kind === 'boss' ? 0.55 : 0.4
+        const dur = this.windupDur()
         if (this.t >= dur && !this.hitDone) {
           this.hitDone = true
-          const reach = this.staticR + 0.45 + (this.kind === 'brute' || this.kind === 'boss' ? 1.0 : 0.7)
+          const reach = this.staticR + 0.45 + (this.kind === 'brute' || this.kind === 'boss' ? 1.0 : this.kind === 'riot' || this.kind === 'splitter' ? 0.85 : 0.7)
           if (dist < reach) {
-            const kb = this.kind === 'brute' ? 9 : this.kind === 'boss' ? 12 : 3.5
+            const kb = this.kind === 'brute' ? 9 : this.kind === 'boss' ? 12 : this.kind === 'riot' ? 8 : 3.5
             p.hurt(this.def.damage * this.dmgMul, this.x, this.z, kb, g)
           }
           this.attackCd = this.def.attackCd
@@ -670,7 +871,7 @@ export class Zombie {
     this.kz *= kd
 
     // static collisions
-    const hit = resolveCircle(this, this.staticR, g.world.colliders)
+    const hit = this.state === 'leap' ? false : resolveCircle(this, this.staticR, g.world.colliders)
     if (hit && this.state === 'charge') {
       this.state = 'stun'
       this.t = 0
@@ -685,7 +886,7 @@ export class Zombie {
     // don't walk through the player's body
     const pd = Math.hypot(p.x - this.x, p.z - this.z)
     const minD = this.staticR * 0.85 + 0.42
-    if (pd < minD && pd > 0.001 && this.state !== 'charge') {
+    if (pd < minD && pd > 0.001 && this.state !== 'charge' && this.state !== 'leap') {
       const k = (minD - pd) / pd
       this.x -= (p.x - this.x) * k
       this.z -= (p.z - this.z) * k
@@ -699,6 +900,19 @@ export class Zombie {
     this.animate(dt)
     r.root.position.set(this.x, 0, this.z)
     r.bar.quaternion.copy(g.camera.quaternion)
+  }
+
+  private windupDur() {
+    switch (this.kind) {
+      case 'brute': return 0.62
+      case 'runner': return 0.26
+      case 'boss': return 0.55
+      case 'riot': return 0.5
+      case 'splitter': return 0.5
+      case 'crawler': return 0.28
+      case 'leaper': return 0.3
+      default: return 0.4
+    }
   }
 
   private pathDir(g: Game, dist: number, ux: number, uz: number) {
@@ -729,16 +943,41 @@ export class Zombie {
     r.body.position.y = Math.abs(sw) * 0.05 * clamp(spd, 0, 2) * (boss ? 0.6 : 1)
     r.upper.rotation.z = sw * 0.04 * clamp(spd, 0, 2)
 
-    let lean = this.kind === 'spitter' ? 0.28 : runner ? 0.32 : brute ? 0.18 : 0.06
-    let armBase = runner ? -0.6 : brute ? -0.9 : -1.3
+    const K = this.kind
+    let lean = K === 'spitter' ? 0.28 : runner ? 0.32 : brute ? 0.18 : K === 'crawler' ? 1.3 : K === 'leaper' ? 0.35 : K === 'riot' ? 0.08 : K === 'screamer' ? 0.15 : K === 'splitter' ? 0.15 : 0.06
+    let armBase = runner ? -0.6 : brute ? -0.9 : K === 'crawler' ? -2.5 : K === 'leaper' ? -0.5 : K === 'riot' ? -0.9 : K === 'screamer' ? -0.4 : -1.3
     let armSwing = runner ? sw * 1.1 : 0.1 * Math.sin(this.phase * 0.5)
     let armL = armBase + armSwing
     let armR = armBase - armSwing
     let scaleY = 1
 
+    if (K === 'splitter') scaleY = 1 + Math.sin(this.t * 4 + this.id) * 0.04
     switch (this.state) {
+      case 'crouch': {
+        const k = clamp(this.t / 0.5, 0, 1)
+        lean = lerpN(lean, 0.75, k)
+        armL = armR = lerpN(armBase, -0.2, k)
+        scaleY = 1 - k * 0.22
+        break
+      }
+      case 'leap': {
+        const k = clamp(this.t / this.leapDur, 0, 1)
+        lean = 0.9
+        armL = armR = -2.2
+        r.body.position.y = Math.sin(k * Math.PI) * 2.4
+        r.legL.rotation.x = -0.9
+        r.legR.rotation.x = 0.6
+        break
+      }
+      case 'shriek': {
+        const k = clamp(this.t / 0.45, 0, 1)
+        lean = lerpN(lean, -0.55, k)
+        armL = armR = lerpN(armBase, -2.6, k)
+        r.head.rotation.x = -0.5 * k
+        break
+      }
       case 'windup': {
-        const dur = this.kind === 'brute' ? 0.62 : this.kind === 'runner' ? 0.26 : this.kind === 'boss' ? 0.55 : 0.4
+        const dur = this.windupDur()
         const k = clamp(this.t / dur, 0, 1)
         if (k < 1) {
           armL = armR = lerpN(armBase, -2.7, k)
@@ -801,6 +1040,7 @@ export class Zombie {
         break
       }
     }
+    if (this.state !== 'shriek') r.head.rotation.x = 0
     if (this.state !== 'slamWindup') for (const a of r.extraArms) a.rotation.x = armBase * 0.8 - sw * 0.15
     r.upper.rotation.x = lean
     r.armL.rotation.x = armL
@@ -853,7 +1093,7 @@ function lerpN(a: number, b: number, t: number) {
 
 /* ------------------------------------------------------------------ pool */
 export class ZombiePool {
-  private free: Record<ZombieKind, Zombie[]> = { walker: [], runner: [], spitter: [], bloater: [], brute: [], boss: [] }
+  private free: Record<ZombieKind, Zombie[]> = { walker: [], runner: [], spitter: [], bloater: [], brute: [], boss: [], leaper: [], riot: [], screamer: [], splitter: [], crawler: [] }
 
   constructor(private scene: THREE.Scene) {}
 

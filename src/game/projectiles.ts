@@ -14,6 +14,16 @@ interface Grenade {
   lightMat: THREE.MeshBasicMaterial
 }
 
+interface Shell {
+  mesh: THREE.Group
+  x: number; z: number
+  ux: number; uz: number
+  dist: number
+  maxD: number
+  dmg: number
+  radius: number
+}
+
 interface Acid {
   mesh: THREE.Mesh
   x0: number; z0: number; x1: number; z1: number
@@ -36,6 +46,7 @@ const G = 26
 export class Projectiles {
   private grenades: Grenade[] = []
   private acids: Acid[] = []
+  private shells: Shell[] = []
   private pools: Pool[] = []
   private acidGeo = new THREE.IcosahedronGeometry(0.28, 0)
   private acidMat = new THREE.MeshBasicMaterial({ color: 0xb6ff3a, toneMapped: false })
@@ -69,6 +80,17 @@ export class Projectiles {
       vx: ux * (dist / T), vz: uz * (dist / T), vy: (0.2 - y0 + 0.5 * G * T * T) / T,
       fuse: 1.55, blast: blastMul, spin: rand(6, 10), lightMat,
     })
+  }
+
+  /** Fast explosive shell fired by the grenade launcher. */
+  shell(x: number, z: number, dx: number, dz: number, dmg: number, radius: number, range: number) {
+    const mesh = new THREE.Group()
+    addBox(mesh, 0.2, 0.2, 0.5, stdMat(0x4f6a2f, { rough: 0.5, metal: 0.3 }), 0, 0, 0)
+    addBox(mesh, 0.14, 0.14, 0.12, new THREE.MeshBasicMaterial({ color: 0xb6ff3a, toneMapped: false }), 0, 0, 0.3, false)
+    mesh.position.set(x, 1.25, z)
+    mesh.rotation.y = Math.atan2(dx, dz)
+    this.scene.add(mesh)
+    this.shells.push({ mesh, x, z, ux: dx, uz: dz, dist: 0, maxD: range, dmg, radius })
   }
 
   spit(x: number, z: number, tx: number, tz: number, dmgMul: number) {
@@ -131,6 +153,37 @@ export class Projectiles {
       }
     }
 
+    for (let i = this.shells.length - 1; i >= 0; i--) {
+      const sh = this.shells[i]
+      const step = 32 * dt
+      sh.x += sh.ux * step
+      sh.z += sh.uz * step
+      sh.dist += step
+      sh.mesh.position.set(sh.x, 1.25, sh.z)
+      g.effects.glow.emit({ x: sh.x - sh.ux * 0.4, y: 1.25, z: sh.z - sh.uz * 0.4, life: 0.25, size: 0.22, grav: 0, color: 0xffb040, fade: true })
+      if (Math.random() < 0.7) g.effects.smoke(sh.x - sh.ux * 0.6, 1.2, sh.z - sh.uz * 0.6, 1, 0x7a7a80, 0.1, 0.3)
+      let boom = sh.dist >= sh.maxD
+      if (!boom) {
+        for (const zb of g.zombies) {
+          if (zb.alive && Math.hypot(zb.x - sh.x, zb.z - sh.z) < zb.hitRadius + 0.2) { boom = true; break }
+        }
+      }
+      if (!boom) {
+        for (const b of g.world.barrels) {
+          if (b.alive && Math.hypot(b.x - sh.x, b.z - sh.z) < 0.8) { boom = true; break }
+        }
+      }
+      if (!boom) {
+        const pt = { x: sh.x, z: sh.z }
+        if (resolveCircle(pt, 0.15, g.world.colliders)) boom = true
+      }
+      if (boom) {
+        this.scene.remove(sh.mesh)
+        this.shells.splice(i, 1)
+        g.combat.explode(sh.x, sh.z, sh.radius, { dmg: sh.dmg, playerDmg: 16, fromPlayer: true, knock: 22 })
+      }
+    }
+
     for (let i = this.acids.length - 1; i >= 0; i--) {
       const a = this.acids[i]
       a.t += dt
@@ -187,6 +240,8 @@ export class Projectiles {
   clear() {
     for (const n of this.grenades) this.scene.remove(n.mesh)
     for (const a of this.acids) this.scene.remove(a.mesh)
+    for (const sh of this.shells) this.scene.remove(sh.mesh)
+    this.shells = []
     for (const p of this.pools) {
       this.scene.remove(p.mesh)
       ;(p.mesh.material as THREE.Material).dispose()

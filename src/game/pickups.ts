@@ -106,7 +106,8 @@ export class Pickups {
       g.effects.number(p.x, 2.4, p.z, `+${Math.round(amt)} HP`, 'heal')
     } else if (k.kind === 'ammo') {
       let any = false
-      for (let i = 1; i < WEAPONS.length; i++) {
+      for (const i of p.loadout) {
+        if (i === 0) continue
         const w = WEAPONS[i]
         const cap = w.mag * 8
         const add = Math.ceil(w.mag * (1.2 + (i === 3 ? 0 : 0.4)) * (1 + 0.1 * p.perk('mag')))

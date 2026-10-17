@@ -72,6 +72,7 @@ function BottomPanel({ game }: { game: Game }) {
   const reserves = useHud('reserves')
   const reload = useHud('reload')
   const perks = useHud('perks')
+  const loadout = useHud('loadout')
   const cap = Math.round(WEAPONS[weapon].mag * (1 + 0.3 * (perks.mag ?? 0)))
   const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100))
   const low = hpPct < 30
@@ -109,23 +110,29 @@ function BottomPanel({ game }: { game: Game }) {
             <span className="reserve">{reserves[weapon] < 0 ? '∞' : `+${reserves[weapon]}`}</span>
           </div>
         </div>
-        <div className="slots">
-          {WEAPONS.map((w, i) => (
-            <button
-              key={w.id}
-              className={'slot' + (i === weapon ? ' active' : '') + (reserves[i] === 0 && mags[i] === 0 ? ' dry' : '')}
-              style={{ ['--c' as string]: '#' + w.color.toString(16).padStart(6, '0') }}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={() => game.player.selectWeapon(i, game)}
-            >
-              <span className="num">{i + 1}</span>
-              <span className="txt">
-                <b>{w.name}</b>
-                <small>{w.sub}</small>
-              </span>
-              <span className="ammo">{reserves[i] < 0 ? '∞' : mags[i] + reserves[i]}</span>
-            </button>
-          ))}
+        <div
+          className={'slots' + (loadout.length > 5 ? ' compact' : '')}
+          style={{ ['--cols' as string]: Math.max(4, loadout.length) }}
+        >
+          {loadout.map((wi, slot) => {
+            const w = WEAPONS[wi]
+            return (
+              <button
+                key={w.id}
+                className={'slot' + (wi === weapon ? ' active' : '') + (reserves[wi] === 0 && mags[wi] === 0 ? ' dry' : '')}
+                style={{ ['--c' as string]: '#' + w.color.toString(16).padStart(6, '0') }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={() => game.player.selectWeapon(wi, game)}
+              >
+                <span className="num">{slot + 1}</span>
+                <span className="txt">
+                  <b>{w.name}</b>
+                  <small>{w.sub}</small>
+                </span>
+                <span className="ammo">{reserves[wi] < 0 ? '∞' : mags[wi] + reserves[wi]}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

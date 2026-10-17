@@ -37,7 +37,9 @@ export class Player {
   perks: Record<string, number> = {}
 
   weapon = 0
-  lastWeapon = 1
+  lastWeapon = 0
+  loadout: number[] = [0]
+  spin = 0
   mags: number[] = WEAPONS.map((w) => w.mag)
   reserves: number[] = WEAPONS.map((w) => w.reserve)
   fireCd = 0
@@ -160,6 +162,53 @@ export class Player {
     addBox(rail, 0.12, 0.3, 0.3, dark, 0, -0.06, -0.4)
     this.guns.push(rail)
 
+    const orangeEm = new THREE.MeshBasicMaterial({ color: 0xff9a2a, toneMapped: false })
+    const purpleEm = new THREE.MeshBasicMaterial({ color: 0xb48cff, toneMapped: false })
+
+    const flamer = new THREE.Group()
+    addBox(flamer, 0.2, 0.22, 0.8, stdMat(0xb23a20), 0, 0, 0.15)
+    addBox(flamer, 0.09, 0.09, 0.4, dark, 0, 0.02, 0.7)
+    addBox(flamer, 0.08, 0.08, 0.08, orangeEm, 0, 0.02, 0.93, false)
+    addBox(flamer, 0.28, 0.5, 0.28, stdMat(0x8a8f99, { metal: 0.6, rough: 0.4 }), 0, -0.1, -0.35)
+    addBox(flamer, 0.3, 0.08, 0.3, dark, 0, 0.17, -0.35)
+    this.guns.push(flamer)
+
+    const launcher = new THREE.Group()
+    addBox(launcher, 0.2, 0.2, 1.0, stdMat(0x4a5a34), 0, 0, 0.2)
+    addBox(launcher, 0.3, 0.3, 0.3, dark, 0, 0, 0.1)
+    addBox(launcher, 0.26, 0.26, 0.1, metal, 0, 0, 0.75)
+    addBox(launcher, 0.06, 0.1, 0.2, metal, 0, 0.17, 0.1)
+    addBox(launcher, 0.1, 0.2, 0.1, dark, 0, -0.2, 0.2)
+    this.guns.push(launcher)
+
+    const minigun = new THREE.Group()
+    addBox(minigun, 0.3, 0.3, 0.45, dark, 0, 0, -0.05)
+    const spinG = new THREE.Group()
+    spinG.position.set(0, 0, 0.65)
+    minigun.add(spinG)
+    for (let k = 0; k < 3; k++) {
+      const a = (k * Math.PI * 2) / 3
+      addBox(spinG, 0.07, 0.07, 0.95, metal, Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0)
+    }
+    addBox(spinG, 0.3, 0.3, 0.06, dark, 0, 0, 0.4)
+    addBox(minigun, 0.34, 0.3, 0.2, stdMat(0x6a5a2a), 0, -0.28, -0.1)
+    minigun.userData.spin = spinG
+    this.guns.push(minigun)
+
+    const arc = new THREE.Group()
+    addBox(arc, 0.18, 0.2, 0.7, dark, 0, 0, 0.1)
+    for (const z of [0.3, 0.5, 0.7]) addBox(arc, 0.26, 0.26, 0.05, purpleEm, 0, 0, z, false)
+    addBox(arc, 0.16, 0.16, 0.16, purpleEm, 0, 0, 0.95, false)
+    addBox(arc, 0.1, 0.2, 0.3, dark, 0, -0.05, -0.35)
+    this.guns.push(arc)
+
+    const magnum = new THREE.Group()
+    addBox(magnum, 0.12, 0.2, 0.3, stdMat(0xc9ced6, { metal: 0.8, rough: 0.3 }), 0, 0, 0.05)
+    addBox(magnum, 0.2, 0.2, 0.2, dark, 0, 0, 0.18)
+    addBox(magnum, 0.07, 0.07, 0.55, metal, 0, 0.04, 0.55)
+    addBox(magnum, 0.1, 0.26, 0.12, wood, 0, -0.2, -0.08)
+    this.guns.push(magnum)
+
     for (const g of this.guns) {
       g.position.set(0, 0.62, 0.5)
       g.visible = false
@@ -218,7 +267,9 @@ export class Player {
     this.frags = 3
     this.perks = {}
     this.weapon = 0
-    this.lastWeapon = 1
+    this.lastWeapon = 0
+    this.loadout = [0]
+    this.spin = 0
     this.mags = WEAPONS.map((w) => w.mag)
     this.reserves = WEAPONS.map((w) => w.reserve)
     this.fireCd = 0
@@ -264,8 +315,24 @@ export class Player {
     }
   }
 
+  owns(i: number) {
+    return this.loadout.includes(i)
+  }
+
+  /** Add a new gun to the loadout (full magazine + reserve) and equip it. */
+  addWeapon(i: number) {
+    if (!this.owns(i)) this.loadout = [...this.loadout, i]
+    this.mags[i] = this.magCap(i)
+    this.reserves[i] = WEAPONS[i].reserve
+    this.lastWeapon = this.weapon
+    this.weapon = i
+    this.reloadT = -1
+    this.fireCd = 0.25
+    this.setWeaponModel()
+  }
+
   selectWeapon(i: number, g: Game) {
-    if (i === this.weapon || i < 0 || i >= WEAPONS.length || this.switchCd > 0) return
+    if (i === this.weapon || !this.owns(i) || this.switchCd > 0) return
     this.lastWeapon = this.weapon
     this.weapon = i
     this.reloadT = -1
@@ -289,7 +356,7 @@ export class Player {
 
   muzzlePos(): { x: number; z: number; y: number } {
     const w = this.weapon
-    const f = [1.25, 1.35, 1.1, 1.65][w]
+    const f = WEAPONS[w].muzzle
     let lat = 0
     if (w === 2) lat = this.side ? 0.34 : -0.34
     const fx = Math.sin(this.angle)
@@ -364,6 +431,11 @@ export class Player {
     let tvx = mx * this.speed
     let tvz = mz * this.speed
     if (this.reloadT >= 0) { tvx *= 0.88; tvz *= 0.88 }
+    const wd = WEAPONS[this.weapon]
+    if (wd.slowOnFire && controllable && inp.fire && this.mags[this.weapon] > 0 && this.reloadT < 0) {
+      tvx *= wd.slowOnFire
+      tvz *= wd.slowOnFire
+    }
     if (this.dashT > 0) {
       this.dashT -= dt
       tvx = this.dashX * DASH_SPEED
@@ -412,8 +484,15 @@ export class Player {
     const def = WEAPONS[w]
 
     // weapon switching
-    for (let i = 0; i < 4; i++) if (inp.pressed(`Digit${i + 1}`)) this.selectWeapon(i, g)
+    for (let i = 0; i < 9; i++) {
+      const wi = this.loadout[i]
+      if (wi !== undefined && inp.pressed(`Digit${i + 1}`)) this.selectWeapon(wi, g)
+    }
     if (inp.pressed('KeyQ')) this.selectWeapon(this.lastWeapon, g)
+
+    // spin-up (minigun)
+    if (def.spinUp && inp.fire && this.mags[w] > 0 && this.reloadT < 0) this.spin = Math.min(1, this.spin + dt * 0.9)
+    else this.spin = Math.max(0, this.spin - dt * (def.spinUp ? 1.4 : 4))
 
     // reload
     if (this.reloadT >= 0) {
@@ -436,10 +515,10 @@ export class Player {
     if (inp.fire && this.fireCd <= 0 && this.reloadT < 0 && this.switchCd <= 0) {
       if (this.mags[w] > 0) {
         this.mags[w]--
-        this.fireCd = def.interval / this.rateMul
+        this.fireCd = def.interval / this.rateMul / (def.spinUp ? lerp(0.22, 1, this.spin) : 1)
         g.combat.fire()
         this.kick = 1
-        this.heat = Math.min(1, this.heat + (w === 2 ? 0.06 : 0.1))
+        this.heat = Math.min(1, this.heat + (def.spinUp ? 0.03 : w === 2 ? 0.06 : 0.1))
         if (this.mags[w] === 0 && this.reserves[w] > 0) this.startReload(g)
       } else if (this.reserves[w] > 0) {
         this.startReload(g)
@@ -489,6 +568,8 @@ export class Player {
     this.armR.rotation.z = this.weapon === 2 ? 0.15 : -0.2
     const gun = this.guns[this.weapon]
     gun.position.z = 0.5 - this.kick * 0.1
+    const spinG = gun.userData.spin as THREE.Group | undefined
+    if (spinG) spinG.rotation.z += this.spin * dt * 48
     gun.rotation.x = -tilt * 0.8 - this.kick * 0.05
     const dashing = this.dashT > 0
     this.upper.rotation.x = dashing ? 0.55 : 0.05 + this.kick * 0.03

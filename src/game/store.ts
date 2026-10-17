@@ -39,6 +39,8 @@ export interface HudState {
   bossName: string
   banner: Banner | null
   perkChoices: PerkDef[]
+  gunChoices: number[]
+  loadout: number[]
   perks: Record<string, number>
   stats: Stats
   hurt: number // increments each time the player takes damage
@@ -55,8 +57,8 @@ const initial: HudState = {
   dashFrac: 1,
   frags: 3,
   weapon: 0,
-  mags: [30, 8, 64, 5],
-  reserves: [-1, 48, 256, 25],
+  mags: [30, 8, 64, 5, 120, 6, 200, 45, 6],
+  reserves: [-1, 48, 256, 25, 360, 30, 600, 200, 42],
   reload: -1,
   combo: 0,
   comboFrac: 0,
@@ -65,6 +67,8 @@ const initial: HudState = {
   bossName: '',
   banner: null,
   perkChoices: [],
+  gunChoices: [],
+  loadout: [0],
   perks: {},
   stats: { kills: 0, time: 0, wave: 0, score: 0, best: 0, newBest: false },
   hurt: 0,

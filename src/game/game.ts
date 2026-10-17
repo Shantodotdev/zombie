@@ -23,13 +23,23 @@ export interface DamageOpts {
   dz: number
   knock: number
   blast?: boolean
+  /** fire/lightning: orange numbers, no blood, no hit flash */
+  fire?: boolean
+  /** bypasses riot shields */
+  noShield?: boolean
 }
 
 const BLOOD: Record<ZombieKind, number> = {
   walker: 0x6a1212, runner: 0x7a5a10, spitter: 0x4a7a1a, bloater: 0x8a7a1a, brute: 0x5a0e0e, boss: 0x4a1a5a,
+  leaper: 0x2a5a7a, riot: 0x4a1218, screamer: 0x5a3a8a, splitter: 0x8a1a4a, crawler: 0x3a5a1a,
 }
 
 const AIM_Y = 1.0
+
+const MAP_COLOR: Record<ZombieKind, string> = {
+  walker: '#ff4a5a', runner: '#ffd23a', spitter: '#b6ff3a', bloater: '#ff9a2a', brute: '#ff6a3a', boss: '#ff2a6a',
+  leaper: '#4ff0ff', riot: '#6a8aff', screamer: '#c08cff', splitter: '#ff4aa0', crawler: '#9ad06a',
+}
 
 export class Game {
   state: GState = 'menu'
@@ -100,11 +110,13 @@ export class Game {
   private comboT = 0
   best = 0
   private heartT = 0
+  private seenKinds = new Set<ZombieKind>()
 
   private timers: Array<{ t: number; fn: () => void }> = []
   private bannerT = 0
   private bannerId = 0
   private hudKeyM = ''
+  private hudKeyL = ''
   private hudKeyR = ''
   private mmT = 0
   private disposers: Array<() => void> = []
@@ -269,13 +281,24 @@ export class Game {
   choosePerk(id: string) {
     if (this.state !== 'upgrade') return
     this.player.applyPerk(id)
+    hud.set({ perks: this.player.perks, perkChoices: [], gunChoices: [] })
+    this.resumeAfterUpgrade()
+  }
+
+  chooseGun(index: number) {
+    if (this.state !== 'upgrade' || !hud.state.gunChoices.includes(index)) return
+    this.player.addWeapon(index)
+    hud.set({ gunChoices: [], perkChoices: [] })
+    this.resumeAfterUpgrade()
+  }
+
+  private resumeAfterUpgrade() {
     this.audio.uiConfirm()
     this.state = 'playing'
     this.waveMode = 'inter'
     this.modeT = 3.4
     this.lockPointer()
     this.banner(`WAVE ${this.wave + 1}`, 'Incoming…', 'normal')
-    hud.set({ perks: this.player.perks, perkChoices: [] })
     this.pushPhase()
   }
 
@@ -350,11 +373,12 @@ export class Game {
     this.timeScale = 1
     this.dyingT = 0
     this.boss = null
+    this.seenKinds.clear()
     this.timers = []
     this.trauma = 0
     this.navT = 0
     this.target.set(0, 0, 0)
-    hud.set({ perks: {}, perkChoices: [], banner: null, bossHp: -1, combo: 0, comboFrac: 0 })
+    hud.set({ perks: {}, perkChoices: [], gunChoices: [], banner: null, bossHp: -1, combo: 0, comboFrac: 0 })
   }
 
   /* ------------------------------------------------------------------ loop */
@@ -651,25 +675,63 @@ export class Game {
   damageZombie(z: Zombie, dmg: number, o: DamageOpts) {
     if (!z.alive) return
     if (z.state === 'stun') dmg *= 1.25
+
+    // riot shield: soaks bullets arriving from the front until it breaks
+    let knockMul = 1
+    if (z.shielded && !o.noShield && !o.blast) {
+      const fx = Math.sin(z.angle)
+      const fz = Math.cos(z.angle)
+      if (fx * o.dx + fz * o.dz < -0.25) {
+        z.shieldHp -= dmg * 0.5
+        dmg *= 0.07
+        knockMul = 0.15
+        this.effects.sparks(z.x + fx * 0.85, 1.1, z.z + fz * 0.85, o.dx, o.dz, 3, 0xfff0c0)
+        this.audio.shieldHit()
+        if (this.simT - z.numT > 0.25) {
+          this.effects.number(z.x, z.rig.height + 0.2, z.z, 'BLOCKED', 'info')
+          z.numT = this.simT
+        }
+        if (z.shieldHp <= 0) z.breakShield(this)
+      }
+    }
+
     z.hp -= dmg
-    z.knock(o.dx, o.dz, o.knock)
-    z.onDamaged()
+    z.knock(o.dx, o.dz, o.knock * knockMul)
+    z.onDamaged(!o.fire)
 
     // batch rapid-fire numbers so SMGs do not flood the screen
     z.numAcc += dmg
     if (this.simT - z.numT > 0.1 || o.crit || z.hp <= 0) {
       const v = Math.round(z.numAcc)
-      this.effects.number(
-        z.x, z.rig.height + 0.2, z.z, o.crit ? `${v}!` : String(v),
-        o.crit ? 'crit' : o.blast ? 'blast' : '', o.crit ? 1.25 : 1,
-      )
+      if (v > 0) {
+        this.effects.number(
+          z.x, z.rig.height + 0.2, z.z, o.crit ? `${v}!` : String(v),
+          o.crit ? 'crit' : o.fire ? 'burn' : o.blast ? 'blast' : '', o.crit ? 1.25 : 1,
+        )
+      }
       z.numAcc = 0
       z.numT = this.simT
     }
-    const sc = z.def.scale
-    this.effects.blood(z.x, 1.0 * sc, z.z, o.dx * 0.6, o.dz * 0.6, o.crit ? 6 : 3, BLOOD[z.kind])
-    this.audio.splat(clamp((z.x - this.player.x) / 30, -1, 1))
+    if (!o.fire) {
+      this.effects.blood(z.x, 1.0 * z.def.scale, z.z, o.dx * 0.6, o.dz * 0.6, o.crit ? 6 : 3, BLOOD[z.kind])
+      this.audio.splat(clamp((z.x - this.player.x) / 30, -1, 1))
+    }
     if (z.hp <= 0) this.killZombie(z, { dx: o.dx, dz: o.dz, blast: o.blast })
+  }
+
+  /** Screamer shriek: enrages every zombie nearby (faster for a few seconds). */
+  screamerBuff(z: Zombie) {
+    const p = this.player
+    this.audio.scream(Math.hypot(z.x - p.x, z.z - p.z))
+    this.effects.ring(z.x, z.z, 1, 13, 0xb48cff, 0.6)
+    this.effects.ring(z.x, z.z, 0.5, 9, 0xe0c8ff, 0.4)
+    for (const o of this.zombies) {
+      if (o.alive && Math.hypot(o.x - z.x, o.z - z.z) < 13) {
+        o.rageT = 5
+        this.effects.glow.emit({ x: o.x, y: o.rig.height + 0.4, z: o.z, life: 0.5, size: 0.5, grav: -1, color: 0xb48cff, fade: true })
+      }
+    }
+    this.shake(0.12)
   }
 
   killZombie(z: Zombie, o: { dx?: number; dz?: number; blast?: boolean; selfDestruct?: boolean } = {}) {
@@ -690,7 +752,7 @@ export class Game {
     const dx = o.dx ?? rand(-1, 1)
     const dz = o.dz ?? rand(-1, 1)
     z.knock(dx, dz, o.blast ? 7 : 4)
-    const n = { walker: 9, runner: 8, spitter: 9, bloater: 16, brute: 24, boss: 70 }[z.kind]
+    const n = { walker: 9, runner: 8, spitter: 9, bloater: 16, brute: 24, boss: 70, leaper: 8, riot: 14, screamer: 7, splitter: 16, crawler: 4 }[z.kind]
     this.effects.gibs(z.x, z.z, z.rig.baseColors, n, def.scale * 0.8, o.blast ? 1.5 : 1)
     this.effects.decal(z.x, z.z, 1.5 * def.scale, BLOOD[z.kind])
     for (let i = 0; i < 3; i++) {
@@ -703,6 +765,16 @@ export class Game {
 
     this.rollDrops(z)
 
+    if (z.kind === 'splitter') {
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + rand(-0.4, 0.4)
+        const cx = z.x + Math.cos(a) * 0.9
+        const cz = z.z + Math.sin(a) * 0.9
+        const c = this.spawnZombie('crawler', cx, cz)
+        c.knock(Math.cos(a), Math.sin(a), 8)
+      }
+      this.effects.blood(z.x, 1, z.z, 0, 0, 14, 0xd8708f)
+    }
     if (z.kind === 'bloater') {
       this.combat.explode(z.x, z.z, 4.8, { dmg: 80, playerDmg: 34, toxic: true, fromPlayer: true })
     }
@@ -720,7 +792,7 @@ export class Game {
 
   private rollDrops(z: Zombie) {
     const p = this.player
-    const base = { walker: 0.1, runner: 0.1, spitter: 0.2, bloater: 0.24, brute: 0.5, boss: 1 }[z.kind]
+    const base = { walker: 0.1, runner: 0.1, spitter: 0.2, bloater: 0.24, brute: 0.5, boss: 1, leaper: 0.12, riot: 0.35, screamer: 0.3, splitter: 0.3, crawler: 0.04 }[z.kind]
     const scav = 1 + 0.35 * p.perk('scav')
     const count = z.kind === 'boss' ? 5 : 1
     for (let i = 0; i < count; i++) {
@@ -796,7 +868,11 @@ export class Game {
     this.spawnT = 0.3
     const boss = n % 5 === 0
     this.audio.waveStart(boss)
-    this.banner(boss ? 'BOSS WAVE' : `WAVE ${String(n).padStart(2, '0')}`, boss ? 'The Abomination approaches' : `${this.queue.length} hostiles incoming`, boss ? 'danger' : 'normal')
+    const fresh = [...new Set(this.queue)].filter((k) => k !== 'boss' && ZOMBIES[k].blurb && !this.seenKinds.has(k))
+    for (const k of this.queue) this.seenKinds.add(k)
+    let sub = boss ? 'The Abomination approaches' : `${this.queue.length} hostiles incoming`
+    if (fresh.length > 0) sub = `New threat: ${ZOMBIES[fresh[0]].label} - ${ZOMBIES[fresh[0]].blurb}`
+    this.banner(boss ? 'BOSS WAVE' : `WAVE ${String(n).padStart(2, '0')}`, sub, boss || fresh.length > 0 ? 'danger' : 'normal')
     if (boss) this.shake(0.3)
   }
 
@@ -838,6 +914,16 @@ export class Game {
   }
 
   private openUpgrade() {
+    // guns first: three random weapons you do not own yet
+    const unowned = WEAPONS.map((_, i) => i).filter((i) => !this.player.owns(i))
+    if (unowned.length > 0) {
+      this.state = 'upgrade'
+      this.input.reset()
+      this.unlockPointer()
+      hud.set({ gunChoices: shuffle(unowned).slice(0, 3), perkChoices: [] })
+      this.pushPhase()
+      return
+    }
     const pool = PERKS.filter((k) => this.player.perk(k.id) < k.max)
     const choices: PerkDef[] = shuffle(pool.slice()).slice(0, 3)
     if (choices.length === 0) {
@@ -848,7 +934,7 @@ export class Game {
     this.state = 'upgrade'
     this.input.reset()
     this.unlockPointer()
-    hud.set({ perkChoices: choices })
+    hud.set({ perkChoices: choices, gunChoices: [] })
     this.pushPhase()
   }
 
@@ -900,6 +986,11 @@ export class Game {
       comboFrac: this.combo > 0 ? q(this.comboT / 3.2, 0.05) : 0,
       bossHp: this.boss && this.boss.alive ? q(this.boss.hp / this.boss.maxHp, 0.01) : -1,
       bossName: this.boss ? this.boss.def.label : '',
+    }
+    const lo = p.loadout.join(',')
+    if (lo !== this.hudKeyL) {
+      this.hudKeyL = lo
+      patch.loadout = p.loadout.slice()
     }
     if (mags !== this.hudKeyM) {
       this.hudKeyM = mags
@@ -980,7 +1071,7 @@ export class Game {
     for (const z of this.zombies) {
       if (!z.alive) continue
       ctx.fillStyle =
-        z.kind === 'boss' ? '#ff2a6a' : z.kind === 'brute' ? '#ff6a3a' : z.kind === 'spitter' ? '#b6ff3a' : z.kind === 'runner' ? '#ffd23a' : z.kind === 'bloater' ? '#ff9a2a' : '#ff4a5a'
+        MAP_COLOR[z.kind]
       ctx.beginPath()
       ctx.arc(z.x, z.z, z.kind === 'boss' ? 2.6 : z.kind === 'brute' || z.kind === 'bloater' ? 1.5 : 1.0, 0, Math.PI * 2)
       ctx.fill()

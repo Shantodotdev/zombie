@@ -199,7 +199,7 @@ export class Effects {
     scene.add(this.debris.mesh, this.glow.mesh)
 
     // tracers
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 150; i++) {
       const m = new THREE.Mesh(
         new THREE.BoxGeometry(1, 1, 1),
         new THREE.MeshBasicMaterial({
@@ -378,6 +378,33 @@ export class Effects {
     t.dist = dist; t.y = y; t.width = width; t.life = t.max = life
     ;(t.mesh.material as THREE.MeshBasicMaterial).color.set(color)
     t.mesh.visible = true
+  }
+
+  /** Jagged lightning link between two points (used by the Arc Caster). */
+  lightning(x0: number, z0: number, x1: number, z1: number, y = 1.3, core = 0xefe6ff, glow = 0xa070ff) {
+    const dx = x1 - x0
+    const dz = z1 - z0
+    const len = Math.hypot(dx, dz)
+    if (len < 0.05) return
+    const nx = -dz / len
+    const nz = dx / len
+    const n = Math.max(2, Math.min(9, Math.ceil(len / 1.5)))
+    let px = x0
+    let pz = z0
+    for (let i = 1; i <= n; i++) {
+      const t = i / n
+      let qx = x0 + dx * t
+      let qz = z0 + dz * t
+      if (i < n) {
+        const j = rand(-0.5, 0.5)
+        qx += nx * j
+        qz += nz * j
+      }
+      this.beam(px, y, pz, qx, qz, core, 0.07, 0.12)
+      px = qx
+      pz = qz
+    }
+    this.beam(x0, y, z0, x1, z1, glow, 0.3, 0.15)
   }
 
   decal(x: number, z: number, size: number, color: number, rot = rand(0, TAU), sx = 1, sz = 1) {
