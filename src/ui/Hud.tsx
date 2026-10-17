@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react'
-import { WEAPONS } from '../game/config'
+import { MAX_LOADOUT, WEAPONS } from '../game/config'
 import type { Game } from '../game/game'
 import { useHud } from '../game/store'
-
-const fmt = (n: number) => n.toLocaleString('en-US')
+import { GunIcon, hex } from './GunIcon'
 
 function SkullIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
       <path d="M8 1C4.7 1 2.5 3.2 2.5 6c0 1.6.7 2.8 1.7 3.6V12h1.6v-1h1.1v1h1.2v-1h1.1v1h1.6V9.6c1-.8 1.7-2 1.7-3.6C13.5 3.2 11.3 1 8 1ZM5.7 8.2a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Zm4.6 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Z" />
     </svg>
   )
@@ -15,7 +14,7 @@ function SkullIcon() {
 
 function SoundIcon({ muted }: { muted: boolean }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
       {muted ? (
         <>
@@ -32,120 +31,81 @@ function SoundIcon({ muted }: { muted: boolean }) {
   )
 }
 
-function TopBar({ game }: { game: Game }) {
+function GrenadeIcon({ on }: { on: boolean }) {
+  return (
+    <svg width="14" height="18" viewBox="0 0 14 18" className={'pip' + (on ? ' on' : '')} aria-hidden>
+      <rect x="4" y="0" width="6" height="3" fill="currentColor" />
+      <rect x="6" y="3" width="2" height="2" fill="currentColor" />
+      <rect x="1" y="5" width="12" height="12" rx="3" fill="currentColor" />
+      <rect x="3" y="8" width="8" height="1.5" fill="rgba(0,0,0,.4)" />
+      <rect x="3" y="11" width="8" height="1.5" fill="rgba(0,0,0,.4)" />
+    </svg>
+  )
+}
+
+/* ---------------------------------------------------------------- top */
+function TopCenter() {
   const wave = useHud('wave')
   const hostiles = useHud('hostiles')
-  const score = useHud('score')
-  const muted = useHud('muted')
+  const total = useHud('waveTotal')
+  const pct = total > 0 ? Math.max(0, Math.min(100, (hostiles / Math.max(total, hostiles)) * 100)) : 0
   return (
-    <div className="topbar">
-      <div className="pill">
-        <div className="stat">
-          <span className="lbl"><i className="dot" />WAVE</span>
+    <div className="hud-tc">
+      <div className="plate cut wave-plate">
+        <div className="wave-n">
+          <small>WAVE</small>
           <b>{String(Math.max(1, wave)).padStart(2, '0')}</b>
         </div>
-        <div className="sep" />
-        <div className="stat">
-          <span className="lbl"><SkullIcon />HOSTILES</span>
-          <b className="amber">{hostiles}</b>
-        </div>
-        <div className="sep" />
-        <div className="stat">
-          <span className="lbl">SCORE</span>
-          <b className="cyan">{fmt(score)}</b>
-        </div>
-      </div>
-      <button className="icon-btn" onClick={() => game.toggleMute()} title="Toggle sound (M)">
-        <SoundIcon muted={muted} />
-      </button>
-    </div>
-  )
-}
-
-function BottomPanel({ game }: { game: Game }) {
-  const hp = useHud('hp')
-  const maxHp = useHud('maxHp')
-  const dash = useHud('dashFrac')
-  const frags = useHud('frags')
-  const weapon = useHud('weapon')
-  const mags = useHud('mags')
-  const reserves = useHud('reserves')
-  const reload = useHud('reload')
-  const perks = useHud('perks')
-  const loadout = useHud('loadout')
-  const cap = Math.round(WEAPONS[weapon].mag * (1 + 0.3 * (perks.mag ?? 0)))
-  const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100))
-  const low = hpPct < 30
-  return (
-    <div className="bottom">
-      <div className="panel">
-        <div className="row top">
-          <div className="hpbox">
-            <div className="hp-head">
-              <span className={'lbl green' + (low ? ' danger' : '')}>OPERATIVE HP</span>
-              <span className="hp-num">{hp} / {maxHp}</span>
-            </div>
-            <div className={'bar hp' + (low ? ' low' : '')}>
-              <i style={{ width: `${hpPct}%` }} />
-            </div>
+        <div className="wave-h">
+          <div className="wave-h-top">
+            <SkullIcon />
+            <b>{hostiles}</b>
+            <span>HOSTILES</span>
           </div>
-          <div className="dashbox">
-            <div className="hp-head">
-              <span className={'lbl' + (dash >= 1 ? ' ready' : '')}>DASH</span>
-              <span className="key">[SPACE]</span>
-            </div>
-            <div className={'bar dash' + (dash >= 1 ? ' ready' : '')}>
-              <i style={{ width: `${dash * 100}%` }} />
-            </div>
+          <div className="sbar thin red">
+            <i style={{ width: `${pct}%` }} />
           </div>
-          <div className="chip frag" title="Frag grenade (G or right click)">
-            <span className="lbl amber">FRAG [G]</span>
-            <b><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="14" r="7" /><path d="M12 7V3M12 3h4" /></svg>{frags}</b>
-          </div>
-          <div className={'chip mag' + (mags[weapon] === 0 ? ' empty' : '')}>
-            <span className="lbl">MAG [R]</span>
-            <b>
-              {reload >= 0 ? <em className="reloading">RELOAD</em> : <>{mags[weapon]}<small>/{cap}</small></>}
-            </b>
-            <span className="reserve">{reserves[weapon] < 0 ? '∞' : `+${reserves[weapon]}`}</span>
-          </div>
-        </div>
-        <div
-          className={'slots' + (loadout.length > 5 ? ' compact' : '')}
-          style={{ ['--cols' as string]: Math.max(4, loadout.length) }}
-        >
-          {loadout.map((wi, slot) => {
-            const w = WEAPONS[wi]
-            return (
-              <button
-                key={w.id}
-                className={'slot' + (wi === weapon ? ' active' : '') + (reserves[wi] === 0 && mags[wi] === 0 ? ' dry' : '')}
-                style={{ ['--c' as string]: '#' + w.color.toString(16).padStart(6, '0') }}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={() => game.player.selectWeapon(wi, game)}
-              >
-                <span className="num">{slot + 1}</span>
-                <span className="txt">
-                  <b>{w.name}</b>
-                  <small>{w.sub}</small>
-                </span>
-                <span className="ammo">{reserves[wi] < 0 ? '∞' : mags[wi] + reserves[wi]}</span>
-              </button>
-            )
-          })}
         </div>
       </div>
     </div>
   )
 }
 
-function Banner() {
-  const banner = useHud('banner')
-  if (!banner) return null
+function TopRight({ game }: { game: Game }) {
+  const score = useHud('score')
+  const muted = useHud('muted')
+  const combo = useHud('combo')
+  const frac = useHud('comboFrac')
+  const digits = String(score).padStart(7, '0')
+  const firstNZ = digits.search(/[1-9]/)
+  const split = firstNZ === -1 ? digits.length - 1 : firstNZ
+  const mult = Math.min(5, 1 + Math.floor(combo / 6))
   return (
-    <div className={'banner ' + (banner.tone ?? 'normal')} key={banner.id}>
-      <h1>{banner.title}</h1>
-      {banner.sub && <p>{banner.sub}</p>}
+    <div className="hud-tr">
+      <div className="score-row">
+        <div className="score">
+          <small>SCORE</small>
+          <b>
+            <span className="zeros">{digits.slice(0, split)}</span>
+            {digits.slice(split)}
+          </b>
+        </div>
+        <button className="sys-btn" onClick={() => game.toggleMute()} title="Toggle sound (M)">
+          <SoundIcon muted={muted} />
+        </button>
+      </div>
+      {combo >= 2 && (
+        <div className="combo">
+          <div className="combo-badge">x{mult}</div>
+          <div className="combo-info">
+            <b>{combo}</b>
+            <small>KILL STREAK</small>
+            <div className="sbar thin amber">
+              <i style={{ width: `${frac * 100}%` }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -156,22 +116,153 @@ function BossBar() {
   if (hp < 0) return null
   return (
     <div className="bossbar">
-      <span>{name}</span>
-      <div className="bar boss"><i style={{ width: `${hp * 100}%` }} /></div>
+      <div className="boss-name">
+        <SkullIcon />
+        <span>{name}</span>
+      </div>
+      <div className="sbar boss" style={{ ['--seg' as string]: 20 }}>
+        <i style={{ width: `${hp * 100}%` }} />
+      </div>
     </div>
   )
 }
 
-function Combo() {
-  const combo = useHud('combo')
-  const frac = useHud('comboFrac')
-  if (combo < 2) return null
-  const mult = Math.min(5, 1 + Math.floor(combo / 6))
+function Banner() {
+  const banner = useHud('banner')
+  if (!banner) return null
   return (
-    <div className="combo">
-      <div className="combo-n">{combo}<small> KILL STREAK</small></div>
-      <div className="combo-mult">x{mult} SCORE</div>
-      <div className="bar combo-bar"><i style={{ width: `${frac * 100}%` }} /></div>
+    <div className={'banner ' + (banner.tone ?? 'normal')} key={banner.id}>
+      <div className="strip">
+        <h1>{banner.title}</h1>
+        {banner.sub && <p>{banner.sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------- bottom */
+function BottomLeft() {
+  const hp = useHud('hp')
+  const maxHp = useHud('maxHp')
+  const dash = useHud('dashFrac')
+  const pct = Math.max(0, Math.min(100, (hp / maxHp) * 100))
+  const low = pct < 30
+  return (
+    <div className="hud-bl">
+      <div className={'vitals' + (low ? ' low' : '')}>
+        <div className="vitals-top">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
+            <rect x="7" y="1" width="6" height="18" fill="currentColor" />
+            <rect x="1" y="7" width="18" height="6" fill="currentColor" />
+          </svg>
+          <span>VITALS</span>
+        </div>
+        <div className="hp-num">
+          <b>{hp}</b>
+          <small>/ {maxHp}</small>
+        </div>
+        <div className={'sbar hp' + (low ? ' low' : '')} style={{ ['--seg' as string]: Math.max(4, Math.round(maxHp / 10)) }}>
+          <i className="trail" style={{ width: `${pct}%` }} />
+          <i className="fill" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+      <div className={'dash' + (dash >= 1 ? ' ready' : '')}>
+        <span className="dash-lbl">DASH</span>
+        <div className="sbar thin dashbar">
+          <i style={{ width: `${dash * 100}%` }} />
+        </div>
+        <kbd>SPACE</kbd>
+      </div>
+    </div>
+  )
+}
+
+function BottomCenter({ game }: { game: Game }) {
+  const weapon = useHud('weapon')
+  const loadout = useHud('loadout')
+  const mags = useHud('mags')
+  const reserves = useHud('reserves')
+  const perks = useHud('perks')
+  return (
+    <div className="hud-bc">
+      {Array.from({ length: MAX_LOADOUT }).map((_, slot) => {
+        const wi = loadout[slot]
+        if (wi === undefined) {
+          return (
+            <div key={slot} className="slot empty cut">
+              <span className="key">{slot + 1}</span>
+              <span className="empty-lbl">EMPTY</span>
+            </div>
+          )
+        }
+        const w = WEAPONS[wi]
+        const cap = Math.round(w.mag * (1 + 0.3 * (perks.mag ?? 0)))
+        const dry = reserves[wi] === 0 && mags[wi] === 0
+        return (
+          <button
+            key={w.id}
+            className={'slot cut' + (wi === weapon ? ' active' : '') + (dry ? ' dry' : '')}
+            style={{ ['--c' as string]: hex(w.color) }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={() => game.player.selectWeapon(wi, game)}
+          >
+            <span className="key">{slot + 1}</span>
+            <GunIcon id={w.id} color={hex(w.color)} className="slot-art" />
+            <span className="slot-name">{w.name}</span>
+            <span className="slot-bar">
+              <i style={{ width: `${Math.min(100, (mags[wi] / cap) * 100)}%` }} />
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function BottomRight() {
+  const weapon = useHud('weapon')
+  const mags = useHud('mags')
+  const reserves = useHud('reserves')
+  const reload = useHud('reload')
+  const frags = useHud('frags')
+  const perks = useHud('perks')
+  const w = WEAPONS[weapon]
+  const cap = Math.round(w.mag * (1 + 0.3 * (perks.mag ?? 0)))
+  const empty = mags[weapon] === 0
+  const maxFrags = 6 + 2 * (perks.frag ?? 0)
+  return (
+    <div className="hud-br">
+      <div className="wname" style={{ ['--c' as string]: hex(w.color) }}>
+        <b>{w.name}</b>
+        <small>{w.sub}</small>
+      </div>
+      <div className={'ammo' + (empty ? ' empty' : '')}>
+        {reload >= 0 ? (
+          <span className="reloading">RELOADING</span>
+        ) : (
+          <>
+            <b>{mags[weapon]}</b>
+            <span>/ {cap}</span>
+          </>
+        )}
+      </div>
+      <div className="reload-bar">
+        <i style={{ width: reload >= 0 ? `${reload * 100}%` : '0%' }} />
+      </div>
+      <div className="ammo-foot">
+        <div className="reserve">
+          <small>RESERVE</small>
+          <b>{reserves[weapon] < 0 ? '∞' : reserves[weapon]}</b>
+        </div>
+        <div className="frags" title="Frag grenade (G / right click)">
+          <div className="pips">
+            {Array.from({ length: Math.max(3, Math.min(maxFrags, 8)) }).map((_, i) => (
+              <GrenadeIcon key={i} on={i < frags} />
+            ))}
+          </div>
+          <kbd>G</kbd>
+        </div>
+      </div>
     </div>
   )
 }
@@ -182,8 +273,7 @@ function Vignette() {
   const hurt = useHud('hurt')
   const ref = useRef<HTMLDivElement>(null)
   const first = useRef(true)
-  const frac = hp / maxHp
-  const lowAlpha = Math.max(0, Math.min(1, (0.55 - frac) / 0.55))
+  const lowAlpha = Math.max(0, Math.min(1, (0.55 - hp / maxHp) / 0.55))
   useEffect(() => {
     if (first.current) {
       first.current = false
@@ -207,11 +297,27 @@ export function Hud({ game }: { game: Game }) {
   return (
     <>
       <Vignette />
-      <TopBar game={game} />
+      <div className="frame-corners" />
+      <RadarFrame />
+      <TopCenter />
+      <TopRight game={game} />
       <BossBar />
-      <Combo />
       <Banner />
-      <BottomPanel game={game} />
+      <BottomLeft />
+      <BottomCenter game={game} />
+      <BottomRight />
     </>
+  )
+}
+
+function RadarFrame() {
+  return (
+    <div className="radar-frame">
+      <span className="r-label">RADAR</span>
+      <i className="c tl" />
+      <i className="c tr" />
+      <i className="c bl" />
+      <i className="c br" />
+    </div>
   )
 }

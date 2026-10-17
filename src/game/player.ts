@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { WEAPONS } from './config'
+import { MAX_LOADOUT, WEAPONS } from './config'
 import { resolveCircle } from './collision'
 import { addBox, newMat, stdMat } from './voxel'
 import { clamp, dampAngle, lerp } from './util'
@@ -319,9 +319,15 @@ export class Player {
     return this.loadout.includes(i)
   }
 
-  /** Add a new gun to the loadout (full magazine + reserve) and equip it. */
-  addWeapon(i: number) {
-    if (!this.owns(i)) this.loadout = [...this.loadout, i]
+  /** Add a new gun to the loadout (full magazine + reserve) and equip it; `replace` swaps out an owned gun in place. */
+  addWeapon(i: number, replace?: number) {
+    if (!this.owns(i)) {
+      if (replace !== undefined && this.owns(replace)) {
+        this.loadout = this.loadout.map((w) => (w === replace ? i : w))
+      } else if (this.loadout.length < MAX_LOADOUT) {
+        this.loadout = [...this.loadout, i]
+      } else return
+    }
     this.mags[i] = this.magCap(i)
     this.reserves[i] = WEAPONS[i].reserve
     this.lastWeapon = this.weapon
@@ -329,6 +335,12 @@ export class Player {
     this.reloadT = -1
     this.fireCd = 0.25
     this.setWeaponModel()
+  }
+
+  /** First owned gun that still has ammo (used when the current one runs dry). */
+  fallbackWeapon(): number {
+    for (const w of this.loadout) if (w !== this.weapon && (this.mags[w] > 0 || this.reserves[w] > 0)) return w
+    return this.weapon
   }
 
   selectWeapon(i: number, g: Game) {
@@ -526,8 +538,8 @@ export class Player {
         this.fireCd = 0.3
         g.audio.empty()
         g.effects.number(this.x, 2.4, this.z, 'NO AMMO', 'info')
-        // fall back to the carbine so the player is never defenceless
-        this.selectWeapon(0, g)
+        // fall back to another gun with ammo so the player is never defenceless
+        this.selectWeapon(this.fallbackWeapon(), g)
       }
     }
 

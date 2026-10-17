@@ -3,6 +3,8 @@ import { shuffle } from './util'
 /* ----------------------------------------------------------------------------
  * Weapons
  * ------------------------------------------------------------------------- */
+export const MAX_LOADOUT = 5
+
 export type WeaponId =
   | 'carbine' | 'shotgun' | 'vectors' | 'railgun'
   | 'flamer' | 'launcher' | 'minigun' | 'arc' | 'magnum'

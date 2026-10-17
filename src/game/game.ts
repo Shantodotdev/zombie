@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { PERKS, WEAPONS, ZOMBIES, buildWave, type PerkDef, type ZombieKind } from './config'
+import { MAX_LOADOUT, PERKS, WEAPONS, ZOMBIES, buildWave, type PerkDef, type ZombieKind } from './config'
 import { AudioEngine } from './audio'
 import { Combat } from './combat'
 import { Effects } from './effects'
@@ -165,7 +165,8 @@ export class Game {
     container.appendChild(this.numbersLayer)
     this.crosshair = document.createElement('div')
     this.crosshair.className = 'crosshair'
-    this.crosshair.innerHTML = '<div class="ch-ring"></div><div class="ch-dot"></div><div class="ch-prog"></div>'
+    this.crosshair.innerHTML =
+      '<div class="ch-ring"></div><i class="ch-t t-n"></i><i class="ch-t t-e"></i><i class="ch-t t-s"></i><i class="ch-t t-w"></i><div class="ch-dot"></div><div class="ch-prog"></div>'
     container.appendChild(this.crosshair)
     this.aimRing = document.createElement('div')
     this.aimRing.className = 'aim-ring'
@@ -285,11 +286,22 @@ export class Game {
     this.resumeAfterUpgrade()
   }
 
-  chooseGun(index: number) {
+  /** Take a gun; when the loadout is full `replace` names the owned gun to swap out. */
+  chooseGun(index: number, replace?: number) {
     if (this.state !== 'upgrade' || !hud.state.gunChoices.includes(index)) return
-    this.player.addWeapon(index)
+    const p = this.player
+    if (p.loadout.length >= MAX_LOADOUT && (replace === undefined || !p.owns(replace))) return
+    p.addWeapon(index, replace)
     hud.set({ gunChoices: [], perkChoices: [] })
     this.resumeAfterUpgrade()
+  }
+
+  /** Loadout full and not keen on any gun: take a stat perk instead. */
+  skipToPerks() {
+    if (this.state !== 'upgrade') return
+    const pool = PERKS.filter((k) => this.player.perk(k.id) < k.max)
+    hud.set({ gunChoices: [], perkChoices: shuffle(pool.slice()).slice(0, 3) })
+    this.audio.uiClick()
   }
 
   private resumeAfterUpgrade() {
@@ -864,6 +876,7 @@ export class Game {
   private beginWave(n: number) {
     this.wave = n
     this.queue = buildWave(n)
+    hud.set({ waveTotal: this.queue.length })
     this.waveMode = 'active'
     this.spawnT = 0.3
     const boss = n % 5 === 0

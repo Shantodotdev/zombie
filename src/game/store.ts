@@ -23,6 +23,7 @@ export interface HudState {
   phase: Phase
   wave: number
   hostiles: number
+  waveTotal: number
   score: number
   hp: number
   maxHp: number
@@ -51,6 +52,7 @@ const initial: HudState = {
   phase: 'menu',
   wave: 0,
   hostiles: 0,
+  waveTotal: 0,
   score: 0,
   hp: 100,
   maxHp: 100,
