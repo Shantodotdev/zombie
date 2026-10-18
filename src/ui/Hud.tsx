@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { MAX_LOADOUT, WEAPONS } from '../game/config'
 import type { Game } from '../game/game'
 import { useHud } from '../game/store'
-import { GunIcon, hex } from './GunIcon'
+import { GunIcon, hex, weaponLabel } from './GunIcon'
 
 function SkullIcon() {
   return (
@@ -53,14 +53,14 @@ function TopCenter() {
     <div className="hud-tc">
       <div className="plate cut wave-plate">
         <div className="wave-n">
-          <small>WAVE</small>
-          <b>{String(Math.max(1, wave)).padStart(2, '0')}</b>
+          <small>Wave</small>
+          <b>{Math.max(1, wave)}</b>
         </div>
         <div className="wave-h">
           <div className="wave-h-top">
             <SkullIcon />
             <b>{hostiles}</b>
-            <span>HOSTILES</span>
+            <span>Enemies</span>
           </div>
           <div className="sbar thin red">
             <i style={{ width: `${pct}%` }} />
@@ -76,19 +76,13 @@ function TopRight({ game }: { game: Game }) {
   const muted = useHud('muted')
   const combo = useHud('combo')
   const frac = useHud('comboFrac')
-  const digits = String(score).padStart(7, '0')
-  const firstNZ = digits.search(/[1-9]/)
-  const split = firstNZ === -1 ? digits.length - 1 : firstNZ
   const mult = Math.min(5, 1 + Math.floor(combo / 6))
   return (
     <div className="hud-tr">
       <div className="score-row">
         <div className="score">
-          <small>SCORE</small>
-          <b>
-            <span className="zeros">{digits.slice(0, split)}</span>
-            {digits.slice(split)}
-          </b>
+          <small>Score</small>
+          <b>{score.toLocaleString('en-US')}</b>
         </div>
         <button className="sys-btn" onClick={() => game.toggleMute()} title="Toggle sound (M)">
           <SoundIcon muted={muted} />
@@ -99,7 +93,7 @@ function TopRight({ game }: { game: Game }) {
           <div className="combo-badge">x{mult}</div>
           <div className="combo-info">
             <b>{combo}</b>
-            <small>KILL STREAK</small>
+            <small>Streak</small>
             <div className="sbar thin amber">
               <i style={{ width: `${frac * 100}%` }} />
             </div>
@@ -155,7 +149,7 @@ function BottomLeft() {
             <rect x="7" y="1" width="6" height="18" fill="currentColor" />
             <rect x="1" y="7" width="18" height="6" fill="currentColor" />
           </svg>
-          <span>VITALS</span>
+          <span>Health</span>
         </div>
         <div className="hp-num">
           <b>{hp}</b>
@@ -167,11 +161,11 @@ function BottomLeft() {
         </div>
       </div>
       <div className={'dash' + (dash >= 1 ? ' ready' : '')}>
-        <span className="dash-lbl">DASH</span>
+        <span className="dash-lbl">Dash</span>
         <div className="sbar thin dashbar">
           <i style={{ width: `${dash * 100}%` }} />
         </div>
-        <kbd>SPACE</kbd>
+        <kbd>Space</kbd>
       </div>
     </div>
   )
@@ -189,9 +183,8 @@ function BottomCenter({ game }: { game: Game }) {
         const wi = loadout[slot]
         if (wi === undefined) {
           return (
-            <div key={slot} className="slot empty cut">
+            <div key={slot} className="slot empty cut" aria-label={`Empty slot ${slot + 1}`}>
               <span className="key">{slot + 1}</span>
-              <span className="empty-lbl">EMPTY</span>
             </div>
           )
         }
@@ -208,7 +201,7 @@ function BottomCenter({ game }: { game: Game }) {
           >
             <span className="key">{slot + 1}</span>
             <GunIcon id={w.id} color={hex(w.color)} className="slot-art" />
-            <span className="slot-name">{w.name}</span>
+            <span className="slot-name">{weaponLabel(w.name)}</span>
             <span className="slot-bar">
               <i style={{ width: `${Math.min(100, (mags[wi] / cap) * 100)}%` }} />
             </span>
@@ -233,12 +226,11 @@ function BottomRight() {
   return (
     <div className="hud-br">
       <div className="wname" style={{ ['--c' as string]: hex(w.color) }}>
-        <b>{w.name}</b>
-        <small>{w.sub}</small>
+        <b>{weaponLabel(w.name)}</b>
       </div>
       <div className={'ammo' + (empty ? ' empty' : '')}>
         {reload >= 0 ? (
-          <span className="reloading">RELOADING</span>
+          <span className="reloading">Reloading</span>
         ) : (
           <>
             <b>{mags[weapon]}</b>
@@ -251,7 +243,7 @@ function BottomRight() {
       </div>
       <div className="ammo-foot">
         <div className="reserve">
-          <small>RESERVE</small>
+          <small>Reserve</small>
           <b>{reserves[weapon] < 0 ? '∞' : reserves[weapon]}</b>
         </div>
         <div className="frags" title="Frag grenade (G / right click)">
@@ -313,7 +305,6 @@ export function Hud({ game }: { game: Game }) {
 function RadarFrame() {
   return (
     <div className="radar-frame">
-      <span className="r-label">RADAR</span>
       <i className="c tl" />
       <i className="c tr" />
       <i className="c bl" />

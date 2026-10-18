@@ -1,0 +1,330 @@
+/* Molded, low-poly console surfaces. Lighting comes from the upper left. */
+:root {
+  --dim: #9aaac3;
+  --panel-face: linear-gradient(145deg, #2a3a50 0%, #172436 46%, #101a29 100%);
+  --panel-shadow: 0 7px 0 #060c15, 0 8px 0 #344157, 0 18px 28px #0008;
+}
+
+.cut {
+  clip-path: none;
+  border: 1px solid color-mix(in srgb, var(--edge) 65%, #7890ac);
+  border-radius: 5px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-shadow), inset 2px 2px 0 #ffffff24, inset -2px -2px 0 #0007;
+  isolation: isolate;
+}
+.cut::before {
+  inset: 5px;
+  border-radius: 2px;
+  clip-path: none;
+  background: linear-gradient(135deg, #ffffff08, transparent 45%), var(--fill);
+  border: 1px solid #0007;
+  box-shadow: 0 1px 0 #ffffff12, inset 0 2px 7px #0005;
+  pointer-events: none;
+}
+.cut::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle at 10px 10px, #0a111d 1px, #687a91 1.5px, #0a111d 2.5px, transparent 3px),
+    radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), #0a111d 1px, #687a91 1.5px, #0a111d 2.5px, transparent 3px);
+}
+
+/* Tactile keys and buttons, including a visible pressed position. */
+kbd, .gcard-key, .slot .key {
+  background: linear-gradient(#34445a, #202d40);
+  border: 1px solid #64758b;
+  border-bottom: 3px solid #0b1422;
+  border-radius: 3px;
+  box-shadow: 0 1px 0 #0009, inset 0 1px 0 #ffffff25;
+  text-shadow: none;
+}
+.m-btn {
+  clip-path: none;
+  border: 1px solid #556a83;
+  border-left: 4px solid #8095af;
+  border-radius: 4px;
+  background: linear-gradient(165deg, #35485f, #1d2b3e 60%, #152135);
+  box-shadow: 0 6px 0 #080f1b, 0 7px 0 #3c4e65, 0 12px 14px #0005, inset 0 2px 0 #ffffff20;
+  text-shadow: none;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
+}
+.m-btn:hover {
+  padding-left: 18px;
+  background: linear-gradient(165deg, #435b74, #263b53 60%, #1b2c43);
+  transform: translateY(-2px);
+  border-color: #8bb5cb;
+}
+.m-btn.primary {
+  border: 1px solid #8affcd;
+  border-left: 4px solid #b7ffdf;
+  background: linear-gradient(160deg, #70ffc2, #32d995 55%, #1daf77);
+  box-shadow: 0 6px 0 #0d6248, 0 7px 0 #48b68e, 0 13px 20px #0007, inset 0 2px 0 #d4ffdf80;
+  text-shadow: none;
+}
+.m-btn.primary:hover { padding-left: 22px; background: linear-gradient(160deg, #9affd6, #49e9a9 55%, #26c68c); }
+.m-btn.ghost { background: linear-gradient(165deg, #233044, #141f2e); border-color: #3b4c63; color: #b0bfd3; }
+.m-btn:active, .m-btn.primary:active {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 #080f1b, inset 0 2px 5px #0004;
+}
+button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 5px; }
+.menu-list { gap: 18px; }
+.menu-list.col { gap: 17px; }
+.sys-btn { clip-path: none; border-radius: 4px; background: var(--panel-face); box-shadow: 0 4px 0 #050a12, inset 1px 1px 0 #ffffff24; }
+.sys-btn:active { transform: translateY(3px); box-shadow: inset 0 2px 4px #0008; }
+
+/* Recessed glass readouts in physical HUD housings. */
+.hud-bl, .hud-br, .score {
+  border: 1px solid #53647b;
+  border-radius: 5px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-shadow), inset 2px 2px 0 #ffffff1f, inset -2px -2px 0 #0006;
+}
+.hud-bl { padding: 16px 19px; width: 286px; gap: 13px; }
+.hud-br { padding: 16px 19px; width: 260px; }
+.hp-num { margin: 13px 0 10px; }
+.hp-num b { font-size: 64px; }
+.ammo { margin: 18px 0 10px; min-height: 52px; }
+.ammo b { font-size: 72px; }
+.ammo .reloading { font-size: 28px; letter-spacing: normal; }
+.ammo-foot { padding-top: 5px; }
+.score { padding: 12px 17px 9px; background: linear-gradient(145deg, #213246, #0b1523 75%); }
+.score b { margin-top: 7px; font-size: 43px; }
+.score .zeros { color: #4a6079; }
+.wave-plate { padding-block: 12px; --fill: #0b1524; }
+.wave-n { border-right: 1px solid #34485f; padding-right: 23px; box-shadow: 1px 0 0 #0009; }
+.wave-n b { margin-top: 7px; }
+.wave-h-top { margin-top: 0; }
+.wave-n b, .hp-num b, .ammo b { text-shadow: none; }
+.sbar, .reload-bar, .slot-bar, .stats i {
+  background-color: #070e18;
+  border: 1px solid #536176;
+  box-shadow: inset 0 2px 4px #000b, 0 1px 0 #ffffff14;
+}
+.sbar > i, .slot-bar i, .stats u { box-shadow: inset 0 2px 0 #ffffff55, inset 0 -2px 0 #0004; }
+.sbar::after { background-image: linear-gradient(#ffffff28, transparent 45%, #0004), linear-gradient(90deg, transparent calc(100% - 2px), #000b 0); }
+.sbar.thin { height: 8px; }
+.reload-bar { height: 5px; }
+.radar-frame { border: 1px solid #50647e; border-radius: 5px; background: linear-gradient(#28394df2, #172436f2) top / 100% 25px no-repeat; box-shadow: var(--panel-shadow), inset 2px 2px 0 #ffffff20; }
+.r-label { top: 7px; left: 13px; font-size: 9px; }
+.minimap { box-shadow: inset 0 0 20px #0009; }
+.radar-frame .c { width: 10px; height: 10px; border-width: 1px; opacity: .6; }
+
+/* Each weapon sits above an inset tray; the selected tray rises out of the rack. */
+.hud-bc { gap: 9px; bottom: 24px; }
+.slot { pointer-events: auto; padding: 9px 8px 10px; height: 83px; transition: transform .16s, box-shadow .16s; }
+.slot::before { background: radial-gradient(ellipse at 50% 25%, #32445970, transparent 70%), #0c1522; }
+.slot::after { background: linear-gradient(90deg, transparent 20%, #ffffff35 50%, transparent 80%) top center / 80% 1px no-repeat; }
+.slot .key { top: 6px; left: 6px; padding: 1px 4px; min-width: 17px; font-size: 9px; line-height: 12px; }
+.slot-art { filter: drop-shadow(0 5px 2px #000a); }
+.slot.active { height: 91px; transform: translateY(-8px); box-shadow: 0 7px 0 #080f1b, 0 8px 0 color-mix(in srgb, var(--c) 45%, #26364b), 0 15px 24px #0009, inset 0 2px 0 color-mix(in srgb, var(--c) 65%, white); }
+.slot.active::before { background: radial-gradient(ellipse at 50% 5%, color-mix(in srgb, var(--c) 20%, transparent), transparent 80%), #111d2c; }
+.slot.active .slot-art { filter: drop-shadow(0 6px 2px #000a) drop-shadow(0 0 7px color-mix(in srgb, var(--c) 30%, transparent)); }
+.slot:not(.empty):hover { transform: translateY(-11px); }
+.slot:not(.empty):active { transform: translateY(-3px); }
+.slot.empty { opacity: .65; }
+
+/* Layered menu typography and floating supply cards. */
+.logo { transform: perspective(900px) rotateY(9deg) rotateX(-3deg); transform-origin: left center; }
+.logo span { text-shadow: none; }
+.logo span.g { text-shadow: none; }
+.logo span::before, .logo span::after { animation: none; }
+.tag-row { font-size: 10px; letter-spacing: normal; margin-bottom: 20px; }
+.hazard { border: 1px solid #cba447; box-shadow: 0 3px 0 #4f3919, 0 7px 10px #0008, inset 0 1px 0 #fff6; }
+.keybinds { padding: 26px 26px 22px; transform: perspective(1100px) rotateY(-7deg) rotateX(2deg); }
+.keybinds ul { gap: 9px; }
+.keybinds li { grid-template-columns: 138px 1fr; }
+.kb-title { padding-bottom: 14px; border-bottom: 1px solid #33465c; }
+.kb-tip { padding: 11px; background: #070e1980; border: 1px solid #334258; box-shadow: inset 0 2px 4px #0006; }
+.panel-modal { --fill: #111c2de8; padding: 34px 42px 40px; }
+.panel-modal h2, .upgrade h2 { text-shadow: none; }
+.panel-modal .eyebrow { margin-bottom: 13px; font-size: 10px; letter-spacing: normal; }
+.cards { gap: 25px; perspective: 1200px; padding-bottom: 10px; }
+.gcard { --fill: #111c2e; padding: 30px 20px 22px; transform: rotateX(2deg); transform-origin: center bottom; transition: transform .2s, box-shadow .2s; }
+.gcard:hover { transform: translateY(-10px) rotateX(-3deg); box-shadow: 0 9px 0 #080f1b, 0 10px 0 color-mix(in srgb, var(--c) 50%, #35455c), 0 25px 35px #0009, inset 0 2px 0 #ffffff40; }
+.gcard:active { transform: translateY(-2px); }
+.gcard-top { height: 5px; inset: 5px 6px auto; border-radius: 2px; background: linear-gradient(#ffffff80, transparent), var(--c); }
+.gcard .gun-art { background: radial-gradient(ellipse at center, color-mix(in srgb, var(--c) 10%, transparent), transparent 70%); filter: drop-shadow(0 10px 3px #0009); transition: transform .2s; }
+.gcard:hover .gun-art { transform: translateY(-5px) scale(1.04); }
+.stats { padding: 12px 8px; background: #060e1880; border: 1px solid #2b3c53; border-radius: 3px; box-shadow: inset 0 2px 5px #0006; }
+.stats > span { grid-template-columns: 62px 1fr 38px; gap: 5px; font-size: 9px; }
+.tags i, .own-chip { clip-path: none; border-radius: 3px; box-shadow: inset 0 1px 0 #ffffff20, 0 2px 0 #060c16; }
+.card-icon { padding: 10px 22px; background: radial-gradient(ellipse, #5ee9ff16, transparent 75%); }
+.pips-row i { border-top: 1px solid #ffffff50; box-shadow: 0 3px 0 #050b13; }
+.swap-slots { flex-wrap: wrap; justify-content: center; gap: 14px; }
+.debrief { padding: 16px; background: #070f1b; border: 1px solid #33465f; border-radius: 3px; box-shadow: inset 0 3px 9px #0008; }
+.screen.dim { background: radial-gradient(ellipse at 50% 35%, #14283e88, #02060ddd); }
+.screen.red { background: radial-gradient(ellipse at 50% 35%, #42172199, #08030be8); }
+.screen:not(.menu) { overflow-y: auto; padding: 28px 18px 38px; }
+.upgrade { max-width: 1120px; margin: auto; }
+
+@media (max-width: 1200px) {
+  .hud-bl { width: 222px; padding: 12px 14px; }
+  .hud-br { width: 216px; padding: 12px 14px; }
+  .hud-bc { gap: 6px; }
+  .slot { width: 84px; }
+  .slot-art { width: 66px; }
+  .slot-name { font-size: 8px; letter-spacing: normal; }
+  .hp-num b { font-size: 54px; }
+  .ammo b { font-size: 60px; }
+}
+@media (max-width: 760px) {
+  .hud-bl, .hud-br { bottom: 120px; width: 180px; }
+  .hud-bl { left: 12px; }
+  .hud-br { right: 12px; }
+  .hud-bc { width: calc(100% - 24px); justify-content: center; bottom: 20px; }
+  .slot { width: min(84px, 18%); min-width: 0; height: 73px; }
+  .slot.active { height: 81px; }
+  .slot-art { width: 100%; max-width: 66px; height: 28px; }
+  .slot-name { max-width: 100%; overflow: hidden; font-size: 7px; letter-spacing: normal; }
+  .slot.empty .empty-lbl { font-size: 7px; letter-spacing: normal; }
+  .hud-tc { left: auto; right: 12px; top: 12px; transform: none; }
+  .wave-plate { min-width: 0; width: 190px; gap: 10px; padding: 12px 14px; }
+  .wave-n { padding-right: 10px; }
+  .wave-n b { font-size: 38px; }
+  .wave-h { min-width: 0; }
+  .wave-h-top { gap: 4px; flex-wrap: wrap; margin-bottom: 5px; }
+  .wave-h-top b { font-size: 24px; }
+  .wave-h-top span { font-size: 7px; letter-spacing: normal; }
+  .hud-tr { top: 112px; right: 12px; }
+  .score { padding: 8px 10px; }
+  .score b { font-size: 28px; }
+  .score small { font-size: 8px; }
+  .score-row { gap: 7px; }
+  .sys-btn { width: 30px; height: 30px; }
+  .radar-frame { transform: scale(.75); transform-origin: top left; left: 10px; top: 12px; }
+  .minimap { transform: scale(.75); transform-origin: top left; left: 16px; top: 33px; }
+  .hp-num b, .ammo b { font-size: 44px; }
+  .hp-num small, .ammo span { font-size: 20px; }
+  .ammo { min-height: 35px; margin-top: 12px; }
+  .wname b { font-size: 11px; letter-spacing: normal; }
+  .wname small { font-size: 8px; letter-spacing: normal; }
+  .vitals-top { font-size: 9px; letter-spacing: normal; }
+  .dash { gap: 6px; }
+  .dash-lbl { width: 32px; font-size: 8px; letter-spacing: normal; }
+  .pips { gap: 1px; }
+  .pip { width: 11px; }
+  .ammo .reloading { font-size: 21px; letter-spacing: normal; }
+  .bossbar { top: 210px; width: calc(100% - 44px); }
+  .boss-name { font-size: 10px; letter-spacing: normal; }
+  .screen.menu { padding: 32px 26px; }
+  .logo { font-size: clamp(78px, 20vw, 130px); }
+  .tag-row { font-size: 8px; letter-spacing: normal; line-height: 1.8; }
+  .tagline { max-width: 370px; font-size: 13px; }
+  .panel-modal, .panel-modal.wide { min-width: 0; width: min(440px, 100%); padding: 28px 22px 32px; }
+  .panel-modal h2 { font-size: 48px; letter-spacing: normal; }
+  .panel-modal .eyebrow { font-size: 8px; letter-spacing: normal; }
+  .m-btn { font-size: 13px; letter-spacing: normal; }
+  .m-btn.primary { font-size: 18px; padding-right: 26px; }
+  .upgrade { width: 100%; padding: 0; }
+  .upgrade h2 { font-size: 38px; letter-spacing: normal; line-height: 1.1; }
+  .upgrade > .eyebrow { font-size: 9px; letter-spacing: normal; line-height: 1.6; }
+  .gcard { width: min(300px, 100%); }
+  .swap-arrow { transform: rotate(90deg); animation: none; }
+  .swap-slots { max-width: 100%; }
+  .debrief { padding: 12px; }
+  .debrief span { font-size: 8px; letter-spacing: normal; }
+  .debrief b { font-size: 26px; }
+}
+@media (max-width: 380px) {
+  .hud-bl, .hud-br { width: calc(50% - 18px); padding: 9px; }
+  .wave-plate { width: 170px; }
+  .wave-n small { font-size: 8px; }
+  .frags { gap: 3px; }
+  .ammo-foot kbd { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui *, .ui *::before, .ui *::after { animation: none !important; transition: none !important; }
+}
+
+/* Plain, compact type lets the artwork and panel depth carry the character. */
+.logo {
+  font: 900 clamp(76px, 8vw, 112px)/.92 var(--font);
+  letter-spacing: -.065em;
+  transform: none;
+  margin-bottom: 36px;
+}
+.logo span, .logo span.g { text-shadow: none; }
+.logo span::before, .logo span::after { content: none; }
+.m-btn, .m-btn.primary { font-size: 16px; font-weight: 700; padding: 14px 22px; text-shadow: none; }
+.m-btn.primary { min-width: 180px; justify-content: space-between; }
+.m-btn:hover, .m-btn.primary:hover { padding-left: 22px; }
+kbd { font-size: 10px; font-weight: 600; text-shadow: none; }
+.keybinds { transform: none; padding: 24px; width: 310px; }
+.kb-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; border-bottom: 0; padding: 0; }
+.kb-title i { display: none; }
+.keybinds li { font-size: 13px; grid-template-columns: 132px 1fr; }
+.keybinds ul { gap: 12px; }
+.keybinds em { color: #bdc8d9; }
+.more-controls { margin-top: 20px; padding-top: 15px; border-top: 1px solid #344258; font-size: 12px; color: #a6b4c8; }
+.more-controls summary { cursor: pointer; width: fit-content; }
+.more-controls summary:hover { color: #fff; }
+.more-controls ul { margin-top: 16px; }
+.panel-modal h2, .upgrade h2 { font: 700 clamp(26px, 3vw, 36px)/1.15 var(--font); padding: 0; margin: 0 0 28px; text-shadow: none; }
+.panel-modal h2.fail { margin: 0 0 24px; color: var(--ink); text-shadow: none; }
+.eyebrow, .upgrade > .eyebrow { font-size: 13px; font-weight: 400; color: var(--dim); margin-bottom: 10px; }
+.gcard { gap: 10px; }
+.gcard b { font-size: 20px; font-weight: 700; text-shadow: none; }
+.gun-sub { font-size: 12px; text-transform: none; }
+.card-desc { font-size: 13px; line-height: 1.5; }
+.stats > span { font-size: 10px; }
+.stats em { font-weight: 400; }
+.gun-ammo { font-size: 11px; font-weight: 400; margin-top: 3px; }
+.o-lbl, .own-chip { font-size: 12px; font-weight: 400; }
+.swap-new small, .swap-new span, .swap-slot small { font-size: 12px; text-transform: none; }
+.swap-slot b { font-size: 13px; }
+.swap-slot em { font-size: 12px; font-weight: 400; }
+.wave-plate { min-width: 280px; padding: 14px 22px; }
+.wave-n b { font: 700 34px/1 var(--num); margin-top: 5px; }
+.wave-n small, .wave-h-top span, .score small, .reserve small, .vitals-top, .dash-lbl { font-size: 11px; font-weight: 400; }
+.wave-h { min-width: 110px; }
+.wave-h-top b { font: 700 24px/1 var(--num); }
+.hp-num b { font: 700 40px/1 var(--num); }
+.hp-num small { font: 400 18px/1 var(--num); }
+.ammo b { font: 700 46px/1 var(--num); }
+.ammo span { font: 400 22px/1 var(--num); }
+.score b { font: 700 30px/1.1 var(--num); color: var(--ink); }
+.score { min-width: 110px; }
+.reserve b { font: 600 21px/1 var(--num); }
+.wname b { font-size: 14px; color: #d7e0ed; text-shadow: none; }
+.slot-name { font-size: 10px; font-weight: 400; }
+.slot.empty { justify-content: flex-end; }
+.ammo .reloading { font: 600 17px/1.2 var(--font); }
+.combo-badge { font-size: 25px; }
+.combo-info b { font-size: 22px; }
+.combo-info small { font-size: 11px; font-weight: 400; }
+.boss-name { font-size: 13px; text-shadow: none; }
+.banner h1 { font: 700 clamp(28px, 4vw, 48px)/1.15 var(--font); padding: 0; text-shadow: none; }
+.banner p { font-size: 13px; text-transform: none; font-weight: 400; }
+.debrief span { font-size: 13px; font-weight: 400; }
+.debrief b { font: 600 22px/1.2 var(--num); }
+.record small { font-size: 12px; font-weight: 400; }
+.record b { font-size: 24px; }
+.stamp { font-size: 12px; transform: none; animation: none; }
+.radar-frame { background: none; }
+
+@media (max-width: 1200px) {
+  .slot-name { font-size: 9px; }
+}
+@media (max-width: 760px) {
+  .logo { font-size: clamp(64px, 18vw, 100px); }
+  .wave-plate { min-width: 0; width: 190px; padding: 12px 14px; }
+  .wave-n b { font-size: 27px; }
+  .wave-n small, .wave-h-top span { font-size: 10px; }
+  .wave-h { min-width: 0; }
+  .wave-h-top b { font-size: 20px; }
+  .hp-num b { font-size: 32px; }
+  .hp-num small { font-size: 14px; }
+  .ammo b { font-size: 36px; }
+  .score b { font-size: 24px; }
+  .slot-name { font-size: 8px; }
+  .dash-lbl { width: 30px; font-size: 10px; }
+  .wname b { font-size: 13px; }
+  .reserve small, .vitals-top { font-size: 11px; }
+  .debrief span { font-size: 12px; }
+  .debrief b { font-size: 20px; }
+}

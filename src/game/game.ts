@@ -243,7 +243,7 @@ export class Game {
     this.input.virtX = 0
     this.input.virtY = -this.aimRadius() * 0.55
     this.lockPointer()
-    this.banner('GET READY', 'Hold the intersection', 'normal')
+    this.banner('Get ready', undefined, 'normal')
     this.pushPhase()
   }
 
@@ -311,7 +311,7 @@ export class Game {
     this.waveMode = 'inter'
     this.modeT = 3.4
     this.lockPointer()
-    this.banner(`WAVE ${this.wave + 1}`, 'Incoming…', 'normal')
+    this.banner(`Wave ${this.wave + 1}`, undefined, 'normal')
     this.pushPhase()
   }
 
@@ -829,7 +829,7 @@ export class Game {
       this.shake(1)
       this.effects.explosion(z.x, z.z, 7, false)
       this.audio.explosion(1.4)
-      this.banner('ABOMINATION DOWN', `+${gain} points`, 'good')
+      this.banner('Boss defeated', `+${gain} points`, 'good')
       this.timeScale = 0.35
     }
     // one-off: mark the wave cleared faster when the last enemy drops
@@ -917,9 +917,9 @@ export class Game {
     this.audio.waveStart(boss)
     const fresh = [...new Set(this.queue)].filter((k) => k !== 'boss' && ZOMBIES[k].blurb && !this.seenKinds.has(k))
     for (const k of this.queue) this.seenKinds.add(k)
-    let sub = boss ? 'The Abomination approaches' : `${this.queue.length} hostiles incoming`
+    let sub: string | undefined
     if (fresh.length > 0) sub = `New threat: ${ZOMBIES[fresh[0]].label} - ${ZOMBIES[fresh[0]].blurb}`
-    this.banner(boss ? 'BOSS WAVE' : `WAVE ${String(n).padStart(2, '0')}`, sub, boss || fresh.length > 0 ? 'danger' : 'normal')
+    this.banner(boss ? 'Boss wave' : `Wave ${n}`, sub, boss || fresh.length > 0 ? 'danger' : 'normal')
     if (boss) this.shake(0.3)
   }
 
@@ -958,7 +958,7 @@ export class Game {
     this.pickups.spawn('ammo', p.x + 2, p.z + 1)
     if (p.frags < p.maxFrags) this.pickups.spawn('frag', p.x - 2, p.z + 1)
     this.audio.waveClear()
-    this.banner(`WAVE ${String(this.wave).padStart(2, '0')} CLEARED`, `+${bonus} bonus · hull patched`, 'good')
+    this.banner(`Wave ${this.wave} cleared`, `+${bonus} points`, 'good')
   }
 
   private openUpgrade() {
